@@ -1,0 +1,74 @@
+광물명_EN,국가,생산량_2024_MT,생산량_2025e_MT,매장량_MT,비고
+Graphite,China,"1,270,000","1,400,000","100,000,000",
+Graphite,Brazil,"58,000","65,000","74,000,000",
+Graphite,Tanzania,"42,000","75,000",N/A,2024년 대비 2배 급증
+Graphite,Madagascar,"85,000","80,000","27,000,000",
+Graphite,India,"17,600","17,000","8,600,000",
+Graphite,Canada,"11,700","8,000","5,900,000",
+Graphite,Korea (North),"8,100","8,000","2,000,000",
+Graphite,Korea (Republic),"1,000","500","1,800,000",
+Graphite,Mexico,706,740,"3,100,000",
+Graphite,Mozambique,"39,000","39,000",N/A,발라마 광산 재가동
+Graphite,United States,—,—,N/A,국내 생산 없음
+Cobalt,Congo (Kinshasa),"226,000","230,000","6,000,000",세계 1위 (74%)
+Cobalt,Indonesia,"35,000","44,000","760,000",세계 2위 (14%)
+Cobalt,Russia,"8,000","7,700","11,800,000",
+Cobalt,Australia,"4,780","3,700","101,700,000",
+Cobalt,Canada,"3,350","3,500","220,000",
+Cobalt,Philippines,"3,100","3,700","260,000",
+Cobalt,Madagascar,"3,100","3,900","100,000,000",
+Cobalt,China,"2,000","2,000","160,000",광산생산 적지만 정제 지배
+Cobalt,World Total,"302,000","310,000","12,000,000",
+Lithium,Australia,"82,700","92,000","68,400,000",세계 1위 (32%)
+Lithium,China,"41,400","62,000","4,600,000",
+Lithium,Chile,"48,900","56,000","9,200,000",
+Lithium,Zimbabwe,"20,000","28,000","500,000",
+Lithium,Brazil,"10,200","12,000","540,000",
+Lithium,Mali,770,"9,400","370,000",신규 증산
+Lithium,Canada,"4,820","5,600","1,600,000",
+Lithium,Portugal,380,380,"60,000",
+Lithium,Argentina,"13,800","23,000","4,400,000",
+Lithium,United States,W,W,"4,400,000",비공개
+Lithium,World Total,"222,000","290,000","37,000,000",미국 제외
+Manganese,South Africa,"7,490","7,600","550,000",세계 1위 (38%)
+Manganese,Gabon,"4,640","5,000","61,000",세계 2위 (25%)
+Manganese,Ghana,"1,280","2,000","13,000",세계 3위 (10%)
+Manganese,Australia,"1,600","1,600","580,000",
+Manganese,Brazil,705,800,"300,000",
+Manganese,India,731,790,"34,000",
+Manganese,China,690,700,"260,000",
+Manganese,Côte d'Ivoire,340,350,N/A,
+Manganese,United States,—,—,—,국내 생산 없음 (1970년 이후)
+Manganese,World Total,"18,700","20,000","1,800,000",단위: 천MT (망간함량 기준)
+Nickel,Indonesia,"2,310,000","2,600,000","62,000,000",세계 1위 (67%)
+Nickel,Philippines,"354,000","270,000","4,800,000",세계 2위 (7%)
+Nickel,Russia,"205,000","200,000","8,300,000",
+Nickel,Canada,"125,000","140,000","2,200,000",
+Nickel,China,"115,000","120,000","4,400,000",
+Nickel,New Caledonia,"116,000","140,000","7,100,000",
+Nickel,Australia,"98,000","45,000","925,000,000",저가로 생산 중단 속출
+Nickel,Brazil,"67,500","70,000","16,000,000",
+Nickel,United States,"7,490","10,000","340,000",미시간 Eagle Mine
+Nickel,World Total,"3,710,000","3,900,000",">140,000,000",
+Rare Earths,China,"270,000","270,000","44,000,000",세계 1위 (69%). 수출통제 강화
+Rare Earths,Burma (Myanmar),"27,000","22,000",N/A,세계 2위
+Rare Earths,Australia,"29,000","29,000","136,300,000",세계 3위
+Rare Earths,United States,"45,500","51,000","1,900,000",Mountain Pass (CA)
+Rare Earths,Russia,"2,600","2,600","3,800,000",
+Rare Earths,India,"2,900","2,900",N/A,
+Rare Earths,Brazil,560,"2,000","11,000,000",
+Rare Earths,Vietnam,300,150,"3,500,000",
+Rare Earths,Thailand,"2,100","4,800",N/A,
+Rare Earths,World Total,"380,000","390,000",">75,000,000",단위: REO 환산 MT
+Tungsten,China,"67,000","67,000","2,500,000",세계 1위 (79%). 수출통제 발동
+Tungsten,Vietnam,"3,400","3,000","170,000",
+Tungsten,Russia,"1,500","2,000","400,000",
+Tungsten,Kazakhstan,—,"2,400",N/A,보구티 광산 신규 생산
+Tungsten,Korea (North),"1,900","2,000","29,000",
+Tungsten,Austria,840,840,"10,000",
+Tungsten,Bolivia,"1,700","1,700",N/A,
+Tungsten,Australia,920,"1,000","570,000",
+Tungsten,Rwanda,"1,300","1,300",N/A,
+Tungsten,Portugal,650,700,"3,400",
+Tungsten,Spain,700,800,"66,000",
+Tungsten,World Total,"82,000","85,000",">4,700,000",

@@ -1,0 +1,26 @@
+===== K-Supply Shield 실행 방법 =====
+
+1. 패키지 설치 (최초 1회)
+   pip install -r requirements.txt
+
+2. 앱 실행
+   streamlit run app.py
+
+3. 브라우저에서 자동으로 열립니다
+   http://localhost:8501
+
+===== 폴더 구조 =====
+인턴연구모임/
+├── app.py                      ← 메인 앱
+├── requirements.txt            ← 필요 패키지
+├── 실행방법.txt
+└── data/
+    ├── prod.csv                ← 생산유발계수표 (한국은행 ECOS)
+    ├── imp.csv                 ← 수입유발계수표
+    ├── emp.csv                 ← 취업유발계수표
+    └── usgs_minerals_summary.csv ← USGS MCS 2026 광물 요약
+
+===== 데이터 출처 =====
+- 산업연관표: 한국은행 ECOS 2023년 연장표
+- 광물 현황: USGS Mineral Commodity Summaries 2026
+- HS 코드: 관세청 품목분류표 (2026.01.01 기준)

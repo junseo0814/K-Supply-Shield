@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K-Supply Shield</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<!-- ───────────── 로그인 화면 ───────────── -->
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <img class="login-logo" src="/static/assets/motie-logo-stacked.png" alt="산업통상부">
+    <div class="login-title">K-Supply Shield</div>
+    <div class="login-sub">핵심광물 공급망 충격 시뮬레이터 관리자 로그인</div>
+    <form class="login-form" id="login-form">
+      <div class="login-field">
+        <label class="login-field-label" for="login-id">아이디</label>
+        <input type="text" id="login-id" placeholder="아이디를 입력하세요" autocomplete="username">
+      </div>
+      <div class="login-field">
+        <label class="login-field-label" for="login-pw">비밀번호</label>
+        <input type="password" id="login-pw" placeholder="비밀번호를 입력하세요" autocomplete="current-password">
+      </div>
+      <button type="submit">로그인하기</button>
+    </form>
+    <div class="login-notice">본 시스템은 산업통상부 내부망 전용입니다. 무단 접속 시 관계 법령에 따라 처벌될 수 있습니다.</div>
+  </div>
+</div>
+
+<div class="app-shell" id="app-shell" hidden>
+
+  <!-- ───────────── 모바일 상단바 (광물 칩 → 바텀시트) ───────────── -->
+  <div class="mobile-topbar" id="mobile-topbar">
+    <img class="mobile-topbar-logo" src="/static/assets/motie-logo-horizontal.png" alt="산업통상부">
+    <span class="mobile-topbar-title">K-Supply Shield</span>
+    <button type="button" class="mineral-chip-trigger" id="mineral-chip-trigger" aria-haspopup="dialog" aria-expanded="false" aria-label="시뮬레이션 조건 설정 열기">
+      <span class="mineral-chip-dot" id="mineral-chip-dot"></span>
+      <span id="mineral-chip-label">-</span>
+    </button>
+    <button type="button" class="logout-icon-btn" id="logout-icon-btn" aria-label="로그아웃하기">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 17l5-5-5-5M20 12H9M12 3H5a2 2 0 00-2 2v14a2 2 0 002 2h7"/></svg>
+    </button>
+  </div>
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+  <!-- ───────────── Sidebar (데스크톱: 고정 사이드바 / 모바일: 바텀시트) ───────────── -->
+  <aside class="sidebar" id="sidebar" role="dialog" aria-label="시뮬레이션 조건 설정">
+    <div class="sidebar-drag-handle" aria-hidden="true"></div>
+    <button type="button" class="sidebar-close-btn" id="sidebar-close-btn" aria-label="메뉴 닫기">✕</button>
+    <div class="brand">
+      <img class="brand-logo" src="/static/assets/motie-logo-horizontal.png" alt="산업통상부">
+      <div>
+        <div class="brand-title">K-Supply Shield</div>
+        <div class="brand-sub">핵심광물 공급망 충격 시뮬레이터</div>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" id="mineral-label">광물 선택</label>
+      <div class="select-wrap">
+        <button type="button" class="mineral-trigger" id="mineral-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="광물 선택"></button>
+        <div class="select-chevron"></div>
+        <div class="mineral-list" id="mineral-list" role="listbox" aria-label="광물 목록" hidden></div>
+      </div>
+      <div class="accent-indicator">
+        <div class="accent-dot" id="accent-dot"></div>
+        <span>현재 강조 컬러 적용됨</span>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="range-row-top">
+        <label class="field-label" for="restriction-range">공급 제한 비율</label>
+        <span class="range-value" id="restriction-value">30%</span>
+      </div>
+      <input type="range" id="restriction-range" min="10" max="100" step="1" aria-label="공급 제한 비율">
+      <div class="range-row"><span>10%</span><span>100%</span></div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="import-input">한국 연간 수입 규모 (조원)</label>
+      <input type="number" id="import-input" min="0" step="0.01">
+    </div>
+
+    <div class="shock-preview">
+      <div class="shock-preview-label">예상 직접 충격 미리보기</div>
+      <div class="shock-preview-value" id="shock-preview-value">-</div>
+      <div class="shock-preview-formula" id="shock-preview-formula"></div>
+    </div>
+
+    <hr class="divider">
+    <div class="field-label" style="margin-bottom:-4px">🏭 비축 파라미터</div>
+
+    <div class="field-group">
+      <div class="range-row-top">
+        <label class="field-label" for="stock-days-range">현재 비축 재고 (일)</label>
+        <span class="range-value" id="stock-days-value">45일</span>
+      </div>
+      <input type="range" id="stock-days-range" min="0" max="180" step="5" value="45">
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="daily-cons-input">일일 소비량 (MT)</label>
+      <input type="number" id="daily-cons-input" min="1" max="10000" step="50" value="500">
+    </div>
+
+    <div class="field-group">
+      <div class="range-row-top">
+        <label class="field-label" for="release-pct-range">비축 방출 비율 (%)</label>
+        <span class="range-value" id="release-pct-value">50%</span>
+      </div>
+      <input type="range" id="release-pct-range" min="0" max="100" step="10" value="50">
+    </div>
+
+    <div class="field-group">
+      <label class="field-label" for="import-cost-input">긴급수입 단가 (억원/MT)</label>
+      <input type="number" id="import-cost-input" min="0.01" max="10" step="0.01" value="0.5">
+    </div>
+
+    <div class="sidebar-footer">
+      한국은행 ECOS 2023 산업연관표 | USGS MCS 2026 | 관세청 | KOMIS 실측 데이터 기반
+    </div>
+
+    <button type="button" class="sidebar-apply-btn" id="sidebar-apply-btn">적용하고 닫기</button>
+  </aside>
+
+  <!-- ───────────── Main ───────────── -->
+  <main class="main">
+
+    <div class="official-banner">
+      <span class="official-banner-text-full">이 서비스는 산업통상부가 운영하는 공식 시스템입니다</span>
+      <span class="official-banner-text-short">산업통상부 공식 시스템</span>
+      <a class="official-banner-link" href="https://www.gov.kr" target="_blank" rel="noopener noreferrer">
+        정부24 바로가기
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M17 7H8M17 7V16"/></svg>
+      </a>
+    </div>
+
+    <div class="top-info-bar">
+      <div class="top-info-clock" id="top-clock"></div>
+      <div class="top-info-divider"></div>
+      <div class="top-info-user">홍길동 사무관(자원공급망관리과)</div>
+      <button type="button" class="report-btn" id="report-btn">📄 리포트 저장</button>
+      <button type="button" class="logout-btn" id="logout-btn">로그아웃하기</button>
+    </div>
+
+    <div class="view-tabs" id="view-tabs">
+      <button type="button" data-view="simulate" class="active">① 충격 시뮬레이션</button>
+      <button type="button" data-view="stockpile">② 비축 조달 의사결정</button>
+      <button type="button" data-view="compare">③ 시나리오 비교</button>
+    </div>
+
+    <!-- 인쇄 시에만 표시되는 공문서 양식 리포트 (재시험 관련 방안 조사 보고 양식 기준) -->
+    <div class="print-report" id="print-report">
+      <div class="report-banner"><span id="report-title">K-Supply Shield 공급망 충격 시뮬레이션 보고</span></div>
+      <div class="report-meta" id="report-meta"></div>
+      <div id="report-body"></div>
+    </div>
+
+    <!-- ═══════ VIEW 1: 충격 시뮬레이션 ═══════ -->
+    <div id="view-simulate">
+      <div class="alert" id="alert-banner" role="alert" aria-live="polite">
+        <div class="alert-dot"></div>
+        <div class="alert-body">
+          <span class="badge" id="alert-badge"></span>
+          <span class="alert-message" id="alert-message"></span>
+        </div>
+        <div class="alert-date" id="alert-date"></div>
+      </div>
+
+      <div class="metric-grid" id="metric-grid"></div>
+
+      <section class="block">
+        <div class="block-head">
+          <div class="block-title">공급망 도미노 충격 전파</div>
+          <div class="block-meta" id="domino-meta"></div>
+        </div>
+        <div class="dday-select" id="dday-select"></div>
+        <div class="domino" id="domino"></div>
+      </section>
+
+      <div class="dday-cards" id="dday-cards"></div>
+
+      <section class="block">
+        <div class="block-head">
+          <div class="block-title">산업별 생산 파급 손실</div>
+          <div class="block-meta" id="industry-meta"></div>
+        </div>
+        <div class="industry-list" id="industry-list"></div>
+        <button type="button" class="industry-toggle-btn" id="industry-toggle-btn" hidden></button>
+      </section>
+
+      <section class="block">
+        <div class="block-head">
+          <div class="block-title">KOMIS 광물종합지수 추이</div>
+          <div class="block-meta">희소금속지수 · 최근 12개월</div>
+        </div>
+        <div class="komis-grid">
+          <svg id="komis-svg" viewBox="0 0 600 180" style="width:100%; height:180px; display:block;">
+            <line x1="0" y1="45" x2="600" y2="45" stroke="rgba(10,20,35,0.10)" stroke-width="1"></line>
+            <line x1="0" y1="90" x2="600" y2="90" stroke="rgba(10,20,35,0.10)" stroke-width="1"></line>
+            <line x1="0" y1="135" x2="600" y2="135" stroke="rgba(10,20,35,0.10)" stroke-width="1"></line>
+            <polyline id="komis-line" points="" fill="none" stroke="#246beb" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+          </svg>
+          <div class="komis-stats" id="komis-stats"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ═══════ VIEW 2: 비축 조달 의사결정 ═══════ -->
+    <div id="view-stockpile" hidden>
+      <div class="block-meta" id="stockpile-summary" style="margin-bottom:16px;"></div>
+
+      <!-- A. 비축량 최적화 역산 -->
+      <section class="block">
+        <div class="block-head">
+          <div class="block-title">A. 비축량 최적화 — "D+N 버티려면 몇 톤?"</div>
+        </div>
+        <div class="stockpile-grid-a">
+          <div>
+            <div class="range-row-top">
+              <label class="field-label" for="target-days-range">목표 생존 일수</label>
+              <span class="range-value" id="target-days-value">45일</span>
+            </div>
+            <input type="range" id="target-days-range" min="7" max="90" step="1" value="45">
+            <div class="coverage-bar-wrap">
+              <div class="coverage-bar-row">
+                <span>현재 커버리지</span><span id="coverage-pct-label">0%</span>
+              </div>
+              <div class="coverage-track"><div class="coverage-fill" id="coverage-fill"></div></div>
+              <div class="coverage-status" id="coverage-status"></div>
+            </div>
+          </div>
+          <div>
+            <div class="table-scroll"><table class="report-table stockpile-table" id="stockpile-a-table"></table></div>
+            <div class="stockpile-hint" id="stockpile-a-hint" hidden></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- B. 최소 안전 비축량 임계값 -->
+      <section class="block">
+        <div class="block-head">
+          <div class="block-title">B. 최소 안전 비축량 임계값</div>
+          <div class="block-meta" id="signal-badge"></div>
+        </div>
+        <div class="stockpile-grid-a">
+          <div class="industry-list" id="threshold-bars"></div>
+          <div>
+            <div class="table-scroll"><table class="report-table stockpile-table" id="stockpile-b-table"></table></div>
+            <div id="stockpile-b-cards"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- C. 방출 우선순위 자동산출 -->
+      <section class="block">
+        <div class="block-head">
+          <div class="block-title">C. 방출 대상 산업 우선순위 자동산출</div>
+          <div class="block-meta">종합점수 = 생산유발(60%) + 고용유발(40%)</div>
+        </div>
+        <div class="stockpile-grid-a">
+          <div id="priority-rows"></div>
+          <div class="industry-list" id="priority-bars"></div>
+        </div>
+      </section>
+
+      <!-- D. 대체 조달 전략 비교 -->
+      <section class="block">
+        <div class="block-head">
+          <div class="block-title">D. 대체 조달 전략 비교</div>
+        </div>
+        <div class="stockpile-grid-a">
+          <div id="radar-wrap"></div>
+          <div id="option-cards"></div>
+        </div>
+        <div class="recommendation-box" id="recommendation-box"></div>
+      </section>
+    </div>
+
+    <!-- ═══════ VIEW 3: 시나리오 비교 ═══════ -->
+    <div id="view-compare" hidden>
+      <section class="block">
+        <div class="block-head">
+          <div class="block-title">비교 대상 광물</div>
+          <div class="block-meta">체크한 광물만 비교됩니다</div>
+        </div>
+        <div class="compare-checks" id="compare-checks"></div>
+        <hr class="divider" style="margin:18px 0;">
+        <div class="range-row-top">
+          <label class="field-label">공통 공급 제한 비율 (모든 광물에 동일 적용)</label>
+          <span class="range-value" id="compare-pct-value">50%</span>
+        </div>
+        <input type="range" id="compare-pct-range" min="10" max="100" step="1" value="50">
+      </section>
+
+      <section class="block">
+        <div class="block-head">
+          <div class="block-title">광물별 총 생산 파급 손실 비교</div>
+          <div class="block-meta" id="compare-meta"></div>
+        </div>
+        <div class="industry-list" id="compare-bars"></div>
+      </section>
+
+      <section class="block">
+        <div class="block-head">
+          <div class="block-title">상세 비교표</div>
+        </div>
+        <div class="table-scroll" id="compare-table-wrap"><table class="compare-table" id="compare-table"></table></div>
+        <div class="compare-cards" id="compare-cards"></div>
+      </section>
+    </div>
+
+    <div class="footer-note">
+      데이터: 한국은행 ECOS 2023년 산업연관표 연장표 | USGS MCS 2026 |
+      관세청 수출입 실적 (2022~2026) | KOMIS 광물종합지수 (2025.07~2026.07) |
+      본 시뮬레이터는 레온티에프 투입산출 모형 기반 추정치입니다.
+    </div>
+  </main>
+
+  <!-- ───────────── 모바일 하단 탭바 ───────────── -->
+  <nav class="mobile-tabbar" id="mobile-tabbar" aria-label="주요 화면 전환">
+    <button type="button" data-view="simulate" class="active" aria-current="true">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M10 19V9M16 19v-6M22 19H2"/></svg>
+      <span>시뮬레이션</span>
+    </button>
+    <button type="button" data-view="stockpile" aria-current="false">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+      <span>비축 조달</span>
+    </button>
+    <button type="button" data-view="compare" aria-current="false">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="3"/><circle cx="17" cy="17" r="3"/><path d="M9.5 8.5l5 5"/></svg>
+      <span>시나리오 비교</span>
+    </button>
+  </nav>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
