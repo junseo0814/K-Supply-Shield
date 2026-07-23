@@ -105,6 +105,15 @@ def get_komis():
     return df.to_dict(orient='records')
 
 
+@app.get("/api/comtrade")
+def get_comtrade():
+    path = os.path.join(DATA_DIR, 'uncomtrade_china_korea.csv')
+    if not os.path.exists(path):
+        return []
+    df = pd.read_csv(path, encoding='utf-8-sig')
+    return df.to_dict(orient='records')
+
+
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 

@@ -6,3 +6,5 @@ _mobile_design_import/
 _design_import*/
 .DS_Store
 Thumbs.db
+server_out.log
+server_err.log

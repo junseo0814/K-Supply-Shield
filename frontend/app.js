@@ -22,6 +22,7 @@ const state = {
   restrictionPct: 30,
   importTrillion: 0, // 사이드바 표시 단위: 조원
   komis: [],
+  comtrade: [], // UN Comtrade 對중국 수입 세부내역 (리포트 별첨 전용)
   ddayIdx: 2, // 0=D+7, 1=D+18, 2=D+40
   simResult: null,
   activeView: "simulate",
@@ -66,13 +67,15 @@ function fmt(n, digits = 2) {
 function fmtPct(v) { return (v >= 0 ? "+" : "") + fmt(v, 1) + "%"; }
 
 async function init() {
-  const [minerals, komis] = await Promise.all([
+  const [minerals, komis, comtrade] = await Promise.all([
     fetchJSON(`${API}/api/minerals`),
     fetchJSON(`${API}/api/komis`),
+    fetchJSON(`${API}/api/comtrade`),
   ]);
 
   minerals.forEach((m) => { state.minerals[m.key] = m; });
   state.komis = komis;
+  state.comtrade = comtrade;
 
   setupMineralDropdown(minerals);
   setupViewTabs();
@@ -835,6 +838,13 @@ function renderPrintReportSimulate() {
   const first = state.komis[0];
   const last = state.komis[state.komis.length - 1];
 
+  const comtradeRows = state.comtrade.filter((d) => d["광물"] === shortName);
+  const hasComtrade = comtradeRows.length > 0;
+  const comtradeTableRows = comtradeRows.map((d) =>
+    `<tr><td>${d["HS코드"]}</td><td class="left">${d["품목명"]}</td><td>${Math.round(d["수입중량_kg"]).toLocaleString("ko-KR")}</td><td>$${Math.round(d["수입액_USD"]).toLocaleString("en-US")}</td></tr>`
+  ).join("");
+  const comtradeTotalUsd = comtradeRows.reduce((s, d) => s + Number(d["수입액_USD"]), 0);
+
   document.getElementById("report-body").innerHTML = `
     <!-- ══════ 요약 (1p) ══════ -->
     <div class="report-section">
@@ -870,7 +880,7 @@ function renderPrintReportSimulate() {
     <div class="report-appendix-list">
       <span class="label">별첨:</span> 1. 공급망 충격 전파 상세 현황<br>
       &nbsp;&nbsp;&nbsp;&nbsp;2. 산업별 생산 파급 손실 상세 (전체 ${allIndustries.length}개 섹터)<br>
-      &nbsp;&nbsp;&nbsp;&nbsp;3. KOMIS 광물종합지수 월별 동향
+      &nbsp;&nbsp;&nbsp;&nbsp;3. KOMIS 광물종합지수 월별 동향${hasComtrade ? '<br>&nbsp;&nbsp;&nbsp;&nbsp;4. 對중국 수입 세부내역 (UN Comtrade)' : ''}
     </div>
     <div class="report-footer-page">- 1 -</div>
 
@@ -910,6 +920,22 @@ function renderPrintReportSimulate() {
       </div>
       <div class="report-footer-page">- 4 -</div>
     </div>
+
+    ${hasComtrade ? `
+    <!-- ══════ 별첨 4 ══════ -->
+    <div class="report-page-break">
+      <div class="appendix-label"><div class="appendix-tag">별첨 4</div><div class="appendix-title">對중국 수입 세부내역 (UN Comtrade)</div></div>
+      <div class="report-section">
+        <table class="report-table">
+          <thead><tr><th>HS코드</th><th>품목명</th><th>수입중량(kg)</th><th>수입액(USD)</th></tr></thead>
+          <tbody>${comtradeTableRows}</tbody>
+        </table>
+        <div class="report-h2">${shortName} 對중국 수입 합계 (2025년 연간, CIF 기준): $${Math.round(comtradeTotalUsd).toLocaleString("en-US")}</div>
+        <div class="report-h2" style="font-size:11px;color:#666">※ 출처: UN Comtrade. 위 관세청 실측 수입 규모(2024, 전세계 기준·원화)와 연도·통화·집계 기준이 달라 직접 비교에는 유의 필요.</div>
+      </div>
+      <div class="report-footer-page">- 5 -</div>
+    </div>
+    ` : ""}
   `;
 }
 
