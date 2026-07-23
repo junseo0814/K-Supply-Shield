@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<script src="https://unpkg.com/d3@7.9.0/dist/d3.min.js" integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js" integrity="sha384-Ukv1p/xTma6P4/2bY5KzWBw+ydSpXmhCMtyciIQVDJ1RmOxtCYNMF1uXT9T63H67" crossorigin="anonymous"></script>
+<style>
+  html,body{margin:0;padding:0;background:#f8fafc;overflow:hidden;}
+  svg{width:100%;height:100%;display:block;}
+  .country{fill:#dbe6f0;stroke:#fff;stroke-width:.6;}
+  .supplier{fill:#2f7fd1;}
+  .kr{fill:#0b3d78;}
+  .route{fill:none;stroke-width:1.6;stroke-linecap:round;stroke-dasharray:5 5;animation:dash 1.6s linear infinite;}
+  @keyframes dash{to{stroke-dashoffset:-20;}}
+  .pulse{fill:#0b3d78;opacity:.9;transform-origin:center;animation:pulse 2s ease-out infinite;}
+  .pulse.origin{fill:#2f7fd1;}
+  .dot{fill:#1a2b4a;}
+  .label-bg{fill:#1a2b4a;rx:11;}
+  .label{font:700 10px 'Pretendard',-apple-system,sans-serif;fill:#fff;}
+  @keyframes pulse{0%{transform:scale(0.6);opacity:.9;}70%{transform:scale(2.6);opacity:0;}100%{opacity:0;}}
+</style>
+</head>
+<body>
+<svg id="stage" viewBox="0 0 600 340"></svg>
+<script>
+const svg = d3.select('#stage');
+const width=600, height=340;
+
+const suppliers = [
+  {name:'중국(희토류·흑연)', lon:104, lat:35, color:'oklch(0.6 0.16 40)'},
+  {name:'호주(리튬·니켈)', lon:133, lat:-25, color:'oklch(0.58 0.14 250)'},
+  {name:'DR콩고(코발트)', lon:23, lat:-3, color:'oklch(0.55 0.15 305)'},
+  {name:'칠레(리튬)', lon:-71, lat:-30, color:'oklch(0.62 0.14 20)'},
+  {name:'인도네시아(니켈)', lon:113, lat:-2, color:'oklch(0.6 0.13 150)'},
+];
+const korea = {lon:127.8, lat:36.3};
+
+fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json')
+  .then(r=>r.json())
+  .then(topo=>{
+    const countries = topojson.feature(topo, topo.objects.countries);
+    const projection = d3.geoNaturalEarth1().fitSize([width,height], countries);
+    const path = d3.geoPath(projection);
+
+    const supplierNames = ['China','Australia','Dem. Rep. Congo','Chile','Indonesia'];
+    svg.selectAll('path.country')
+      .data(countries.features)
+      .enter().append('path')
+      .attr('class', d => {
+        if(d.properties.name === 'South Korea') return 'country kr';
+        if(supplierNames.includes(d.properties.name)) return 'country supplier';
+        return 'country';
+      })
+      .attr('d', path);
+
+    const krXY = projection([korea.lon, korea.lat]);
+
+    function labelBadge(x,y,text,anchorLeft){
+      const g = svg.append('g');
+      const w = 12 + text.length*6.4;
+      const lx = anchorLeft ? x-6-w : x+6;
+      g.append('rect').attr('class','label-bg').attr('x',lx).attr('y',y-10).attr('width',w).attr('height',20).attr('rx',10);
+      g.append('text').attr('class','label').attr('x',lx+w/2).attr('y',y+4).attr('text-anchor','middle').text(text);
+    }
+
+    suppliers.forEach((s,i)=>{
+      const oXY = projection([s.lon, s.lat]);
+      const mx = (oXY[0]+krXY[0])/2, my = Math.min(oXY[1],krXY[1]) - 26;
+      svg.append('path')
+        .attr('class','route')
+        .attr('stroke', s.color)
+        .attr('d', `M${oXY[0]},${oXY[1]} Q${mx},${my} ${krXY[0]},${krXY[1]}`);
+      svg.append('circle').attr('class','dot').attr('cx',oXY[0]).attr('cy',oXY[1]).attr('r',3);
+      svg.append('circle').attr('class','pulse origin').attr('cx',oXY[0]).attr('cy',oXY[1]).attr('r',4)
+        .style('animation-delay', (Math.random()*2).toFixed(2)+'s');
+      labelBadge(oXY[0], oXY[1]-4, s.name, i%2===0);
+    });
+
+    svg.append('circle').attr('class','dot').attr('cx',krXY[0]).attr('cy',krXY[1]).attr('r',5).attr('fill','#0b3d78');
+    svg.append('circle').attr('class','pulse').attr('cx',krXY[0]).attr('cy',krXY[1]).attr('r',5);
+    labelBadge(krXY[0], krXY[1]+14, '대한민국', false);
+  });
+</script>
+</body>
+</html>

@@ -6,27 +6,30 @@
   --surface: #ffffff;
   --surface-muted: #f7f8fa;
 
-  --text-primary: #1e2225;
-  --text-secondary: #5b6472;
+  --text-primary: #1c1f24;
+  --text-secondary: #595e66;
   --text-tertiary: #6b7585; /* 접근성: #8a93a0(3.1:1)→#6b7585(4.5:1 이상, 흰 배경 기준) */
   --text-quaternary: #9aa2ae;
 
   --border: rgba(10, 20, 35, 0.08);
   --border-strong: rgba(10, 20, 35, 0.14);
 
-  --primary: #246beb;
-  --primary-dark: #0c3388;
+  /* 디자인 리뉴얼: 정부 포털 레퍼런스(FTA 강국 KOREA)에 맞춘 navy 아이덴티티 */
+  --primary: #0b3d78;
+  --primary-dark: #082a54;
+  --logo-red: #c62828;
 
-  --danger: #de3411;
-  --warning: #ffb015;
-  --success: #228738;
+  --danger: #c92f33;
+  --warning: #d89700;
+  --success: #319751;
 
   --loss-orange: #ff8a3d;
   --employment-red: #f0563a;
   --multiplier-blue: #4f8bff;
 
   /* 광물 선택에 따라 JS가 즉시 갱신하는 포인트 컬러 */
-  --accent: #246beb;
+  --accent: #0b3d78;
+  --accent-dark: #082a54;
   --accent-border: color-mix(in srgb, var(--accent) 45%, transparent);
   --accent-glow: color-mix(in srgb, var(--accent) 35%, transparent);
   --accent-tint: color-mix(in srgb, var(--accent) 14%, #ffffff);
@@ -66,7 +69,7 @@ html, body {
 /* 접근성: 키보드 포커스 표시 (디지털 정부서비스 UI/UX 가이드라인 접근성 기준)
    일부 컴포넌트가 outline:none을 지정하므로 !important로 항상 보이도록 보장 */
 :focus-visible {
-  outline: 2px solid #246beb !important;
+  outline: 2px solid var(--primary) !important;
   outline-offset: 2px !important;
   border-radius: inherit;
 }
@@ -118,6 +121,7 @@ html, body {
   height: 100vh;
   overflow-y: auto;
 }
+.app-shell.landing-mode .sidebar { display: none; }
 
 .brand {
   display: flex;
@@ -578,8 +582,18 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   margin-top: 8px;
   transition: background .15s ease;
 }
-.login-form button:hover { background: #1d57c2; }
-.login-notice { font-size: 11px; color: var(--text-quaternary); margin-top: 22px; text-align: center; }
+.login-form button:hover { background: var(--primary-dark); }
+.login-notice {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-top: 22px;
+  text-align: left;
+  background: #ecf6ff;
+  border: 1px solid #c1cfe2;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
 
 /* ── Top info bar ──────────────────────────────────────── */
 .top-info-bar {
@@ -587,6 +601,10 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   align-items: center;
   justify-content: flex-end;
   gap: 18px;
+  background: #f4f6f9;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px 18px;
 }
 .top-info-clock { font-size: 13px; color: var(--text-secondary); font-weight: 600; font-variant-numeric: tabular-nums; }
 .top-info-divider { width: 1px; height: 16px; background: var(--border-strong); }
@@ -595,9 +613,9 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   /* Ghost 버튼: 로그아웃은 파괴적 액션이지만 화면 내 유일한 주요 액션은 아니므로 비강조 처리.
      원 스펙의 보더색 rgba(255,255,255,.4)는 어두운 배경 전제라 흰 배경(top-info-bar)에서는
      보이지 않으므로, 같은 명도 대비 의도를 유지하는 짙은 톤으로 대체함. */
-  background: none;
-  border: 1px solid rgba(10, 20, 35, 0.35);
-  border-radius: 6px;
+  background: #fff;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
   padding: 5px 16px;
   min-height: 44px;
   display: inline-flex;
@@ -614,10 +632,11 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .logout-btn:hover { background: rgba(10, 20, 35, 0.05); }
 
 .report-btn {
-  background: none;
+  background: #fff;
   border: 1px solid var(--accent-border);
-  border-radius: 6px;
+  border-radius: 4px;
   padding: 5px 14px;
+  min-height: 44px;
   font-size: 12px;
   font-weight: 700;
   color: var(--accent);
@@ -629,28 +648,154 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
 }
 .report-btn:hover { background: var(--accent-tint); }
 
-/* ── View tabs ─────────────────────────────────────────── */
-.view-tabs {
+/* ── Top nav banner (배너형 상단 내비게이션 — 탭 3개를 정부포털 스타일 메뉴로) ── */
+.top-nav-banner {
   display: flex;
-  gap: 8px;
-}
-.view-tabs button {
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 84px;
   background: var(--surface);
-  border: 1px solid var(--border-strong);
-  color: var(--text-secondary);
-  border-radius: 999px;
-  padding: 9px 18px;
-  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 12px 28px;
+  box-shadow: var(--shadow-card);
+  flex-wrap: wrap;
+}
+.top-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.top-nav-logo { height: 28px; width: auto; display: block; }
+.top-nav-divider { width: 1px; height: 30px; background: var(--border-strong); display: block; }
+.top-nav-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.top-nav-title-main { color: var(--primary); }
+.top-nav-title-sub { color: var(--logo-red); }
+.top-nav-menu {
+  display: flex;
+  gap: 36px;
+}
+.top-nav-menu button {
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-primary);
+  padding: 8px 2px 9px;
+  font-size: 17px;
   font-weight: 700;
   font-family: var(--font);
   cursor: pointer;
-  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+  white-space: nowrap;
+  transition: color .15s ease, border-color .15s ease;
 }
-.view-tabs button.active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
-  box-shadow: 0 4px 12px -3px rgba(36, 107, 235, 0.4);
+.top-nav-menu button:hover { color: var(--primary); }
+.top-nav-menu button.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+/* ── 랜딩 화면 (로그인 직후 진입) ──────────────────────── */
+.landing {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+.landing-title { font-weight: 800; font-size: 20px; color: var(--text-primary); }
+.landing-desc { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+.landing-map-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+.landing-map-frame { width: 100%; height: 420px; border: none; border-radius: 6px; display: block; }
+.landing-pills { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; }
+.landing-pill {
+  min-height: 52px;
+  background: var(--surface);
+  border: 2px solid var(--primary);
+  border-radius: 999px;
+  padding: 14px 32px;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--primary);
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.landing-pill:hover { background: var(--accent-tint); }
+.landing-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.landing-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+.landing-card-title { font-weight: 800; font-size: 14px; margin-bottom: 6px; color: var(--text-primary); }
+.landing-card-desc { font-size: 12.5px; color: var(--text-secondary); line-height: 1.5; }
+.landing-carousel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+}
+.landing-carousel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.landing-carousel-title { font-weight: 800; font-size: 14px; color: var(--text-primary); }
+.landing-carousel-controls { display: flex; gap: 6px; }
+.landing-carousel-controls button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 13px;
+  cursor: pointer;
+}
+.landing-carousel-controls button:hover { background: var(--surface-muted); }
+.landing-carousel-track {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.carousel-item {
+  min-height: 64px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 
 /* ── Print-only report (화면에는 숨김, 인쇄 시에만 렌더) ──
@@ -1049,7 +1194,7 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
     font-weight: 700;
     cursor: pointer;
   }
-  .sidebar-apply-btn:hover { background: #1d57c2; }
+  .sidebar-apply-btn:hover { background: var(--primary-dark); }
 
   .sidebar-backdrop {
     display: none;
@@ -1059,7 +1204,7 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   }
   .sidebar-backdrop.open { display: block; }
 
-  .view-tabs { display: none; }
+  .top-nav-banner { display: none; }
 
   /* 하단 탭바 (네이티브 앱 패턴) */
   .mobile-tabbar {
@@ -1098,6 +1243,10 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   .metric-grid { grid-template-columns: repeat(2, 1fr); }
   .dday-cards { grid-template-columns: 1fr; }
   .komis-grid { grid-template-columns: 1fr; }
+  .landing-cards { grid-template-columns: 1fr; }
+  .landing-carousel-track { grid-template-columns: repeat(2, 1fr); }
+  .landing-map-frame { height: 260px; }
+  .landing-pill { padding: 12px 20px; font-size: 13px; }
   .industry-row { grid-template-columns: minmax(64px, 110px) 1fr minmax(48px, 70px); }
   .industry-toggle-btn {
     display: block;
@@ -1165,12 +1314,12 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
 @media print {
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   body { background: #fff; }
-  .login-screen, .sidebar, .top-info-bar, .view-tabs,
+  .login-screen, .sidebar, .top-info-bar, .top-nav-banner,
   .official-banner, .footer-note,
   .mobile-topbar, .mobile-tabbar, .sidebar-backdrop { display: none !important; }
   .app-shell { display: block !important; min-height: 0; }
   .main { padding: 0; max-width: none; gap: 0; }
-  #view-simulate, #view-stockpile, #view-compare { display: none !important; }
+  #view-landing, #view-simulate, #view-stockpile, #view-compare { display: none !important; }
   .print-report {
     display: block !important;
     color: #000;

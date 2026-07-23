@@ -147,10 +147,17 @@
       <button type="button" class="logout-btn" id="logout-btn">로그아웃하기</button>
     </div>
 
-    <div class="view-tabs" id="view-tabs">
-      <button type="button" data-view="simulate" class="active">① 충격 시뮬레이션</button>
-      <button type="button" data-view="stockpile">② 비축 조달 의사결정</button>
-      <button type="button" data-view="compare">③ 시나리오 비교</button>
+    <div class="top-nav-banner" id="view-tabs">
+      <div class="top-nav-brand">
+        <img class="top-nav-logo" src="/static/assets/motie-logo-horizontal.png" alt="산업통상부">
+        <span class="top-nav-divider" aria-hidden="true"></span>
+        <span class="top-nav-title"><span class="top-nav-title-main">K-Supply</span><span class="top-nav-title-sub">Shield</span></span>
+      </div>
+      <nav class="top-nav-menu" aria-label="주요 화면 전환">
+        <button type="button" data-view="simulate">① 충격 시뮬레이션</button>
+        <button type="button" data-view="stockpile">② 비축 조달 의사결정</button>
+        <button type="button" data-view="compare">③ 시나리오 비교</button>
+      </nav>
     </div>
 
     <!-- 인쇄 시에만 표시되는 공문서 양식 리포트 (재시험 관련 방안 조사 보고 양식 기준) -->
@@ -160,8 +167,49 @@
       <div id="report-body"></div>
     </div>
 
+    <!-- ═══════ VIEW 0: 랜딩 (로그인 직후 진입 화면) ═══════ -->
+    <div id="view-landing" class="landing">
+      <div class="landing-intro">
+        <div class="landing-title">글로벌 공급망 경로</div>
+        <div class="landing-desc">주요 원산지 → 대한민국 실시간 조달 경로를 확인하고, 아래에서 분석 화면으로 이동하세요.</div>
+      </div>
+      <div class="landing-map-card">
+        <iframe src="/static/korea-supply-map.html" title="핵심광물 공급망 경로 지도" class="landing-map-frame"></iframe>
+      </div>
+      <div class="landing-pills" id="landing-pills">
+        <button type="button" class="landing-pill" data-view="simulate">① 충격 시뮬레이션</button>
+        <button type="button" class="landing-pill" data-view="stockpile">② 비축 조달 의사결정</button>
+        <button type="button" class="landing-pill" data-view="compare">③ 시나리오 비교</button>
+      </div>
+      <div class="landing-cards">
+        <div class="landing-card">
+          <div class="landing-card-title">① 충격 시뮬레이션</div>
+          <div class="landing-card-desc">광물 공급 제한 시나리오에 따른 직접 수입 충격·생산 파급 손실·고용 위협을 레온티에프 산업연관표 기반으로 즉시 계산합니다.</div>
+        </div>
+        <div class="landing-card">
+          <div class="landing-card-title">② 비축 조달 의사결정</div>
+          <div class="landing-card-desc">목표 생존일수 대비 비축량 커버리지, 최소 안전 비축량 임계값, 방출 우선순위, 대체 조달 전략을 비교해 의사결정을 지원합니다.</div>
+        </div>
+        <div class="landing-card">
+          <div class="landing-card-title">③ 시나리오 비교</div>
+          <div class="landing-card-desc">7개 핵심광물의 공급 충격 시나리오를 동시에 비교해 어떤 광물이 가장 시급한 대응이 필요한지 확인합니다.</div>
+        </div>
+      </div>
+      <div class="landing-carousel">
+        <div class="landing-carousel-head">
+          <div class="landing-carousel-title">유관기관 바로가기</div>
+          <div class="landing-carousel-controls">
+            <button type="button" id="carousel-prev" aria-label="이전 배너로 이동하기">‹</button>
+            <button type="button" id="carousel-toggle">정지하기</button>
+            <button type="button" id="carousel-next" aria-label="다음 배너로 이동하기">›</button>
+          </div>
+        </div>
+        <div class="landing-carousel-track" id="landing-carousel-track"></div>
+      </div>
+    </div>
+
     <!-- ═══════ VIEW 1: 충격 시뮬레이션 ═══════ -->
-    <div id="view-simulate">
+    <div id="view-simulate" hidden>
       <div class="alert" id="alert-banner" role="alert" aria-live="polite">
         <div class="alert-dot"></div>
         <div class="alert-body">
@@ -323,7 +371,7 @@
 
   <!-- ───────────── 모바일 하단 탭바 ───────────── -->
   <nav class="mobile-tabbar" id="mobile-tabbar" aria-label="주요 화면 전환">
-    <button type="button" data-view="simulate" class="active" aria-current="true">
+    <button type="button" data-view="simulate">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M10 19V9M16 19v-6M22 19H2"/></svg>
       <span>시뮬레이션</span>
     </button>

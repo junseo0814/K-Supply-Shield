@@ -2,18 +2,27 @@
 // 시각 언어는 디자인 목업(design_handoff_ksupply_shield)을 이식, 데이터/계산은 실제 백엔드 API 사용.
 const API = "";
 
-// 목업에서 가져온 광물별 포인트 컬러 (oklch → hex로 변환).
-// 원래 oklch() + color-mix(in oklch, ...)를 사용했으나, 일부 브라우저(이 미리보기 포함)에서
-// 특정 hue(특히 리튬의 hue 300, 보라색)가 채도를 잃고 회색으로 렌더링되는 문제가 있어
-// 발표 환경 호환성을 위해 표준 hex로 교체.
+// 광물별 포인트 컬러 (디자인 리뉴얼 목업의 oklch(0.56 0.14 {hue}) 값을 sRGB hex로 변환).
+// oklch() 원본을 그대로 쓰지 않는 이유: 일부 브라우저에서 특정 hue가 채도를 잃고
+// 회색으로 렌더링되는 문제가 있어 발표 환경 호환성을 위해 표준 hex로 고정.
 const MINERAL_ACCENTS = {
-  "흑연 (Graphite)": "#8a93a0",
-  "리튬 (Lithium)": "#9d3fd1",
-  "코발트 (Cobalt)": "#2f7fe0",
-  "니켈 (Nickel)": "#12a58c",
-  "망간 (Manganese)": "#d8367e",
-  "희토류 (Rare Earths)": "#b3941a",
-  "텅스텐 (Tungsten)": "#5b4fd6",
+  "흑연 (Graphite)": "#2378c2",
+  "리튬 (Lithium)": "#b84c51",
+  "코발트 (Cobalt)": "#4b70c6",
+  "니켈 (Nickel)": "#218a45",
+  "망간 (Manganese)": "#885cb5",
+  "희토류 (Rare Earths)": "#9a6b00",
+  "텅스텐 (Tungsten)": "#008a9b",
+};
+// 위 accent보다 어두운 톤 (oklch(0.4 0.15 {hue})) — 흰 배경 위 강조 텍스트용 (WCAG AA 대비 확보)
+const MINERAL_ACCENTS_DARK = {
+  "흑연 (Graphite)": "#004794",
+  "리튬 (Lithium)": "#860f23",
+  "코발트 (Cobalt)": "#1e3f97",
+  "니켈 (Nickel)": "#005c0f",
+  "망간 (Manganese)": "#5b2987",
+  "희토류 (Rare Earths)": "#6b3c00",
+  "텅스텐 (Tungsten)": "#005a6d",
 };
 
 const state = {
@@ -25,7 +34,7 @@ const state = {
   comtrade: [], // UN Comtrade 對중국 수입 세부내역 (리포트 별첨 전용)
   ddayIdx: 2, // 0=D+7, 1=D+18, 2=D+40
   simResult: null,
-  activeView: "simulate",
+  activeView: "landing",
   compareChecked: new Set(),
   comparePct: 50,
   stockDays: 45,
@@ -115,9 +124,11 @@ async function init() {
   });
 
   setupStockpileView();
+  setupLandingCarousel();
 
   selectMineral(minerals[0].key);
   renderKomis();
+  switchView("landing");
 }
 
 // ── ② 비축 조달 의사결정 ──────────────────────────────────
@@ -383,8 +394,10 @@ function closeMineralDropdown() {
 }
 
 function setAccent(mineralKey) {
-  const accent = MINERAL_ACCENTS[mineralKey] || "#246beb";
+  const accent = MINERAL_ACCENTS[mineralKey] || "#0b3d78";
+  const accentDark = MINERAL_ACCENTS_DARK[mineralKey] || "#082a54";
   document.documentElement.style.setProperty("--accent", accent);
+  document.documentElement.style.setProperty("--accent-dark", accentDark);
   document.getElementById("accent-dot").style.background = accent;
   const line = document.getElementById("komis-line");
   if (line) line.setAttribute("stroke", accent);
@@ -625,6 +638,7 @@ function setupAuth() {
     e.preventDefault();
     sessionStorage.setItem("ksupply_logged_in", "1");
     showDashboard();
+    switchView("landing");
   });
   const doLogout = () => {
     sessionStorage.removeItem("ksupply_logged_in");
@@ -659,6 +673,8 @@ function setupViewTabs() {
   };
   document.getElementById("view-tabs").addEventListener("click", onTabClick);
   document.getElementById("mobile-tabbar").addEventListener("click", onTabClick);
+  document.getElementById("landing-pills").addEventListener("click", onTabClick);
+  document.querySelector(".top-nav-brand").addEventListener("click", () => switchView("landing"));
 }
 function switchView(view) {
   state.activeView = view;
@@ -667,11 +683,45 @@ function switchView(view) {
     btn.classList.toggle("active", isActive);
     btn.setAttribute("aria-current", String(isActive));
   });
+  document.getElementById("view-landing").hidden = view !== "landing";
   document.getElementById("view-simulate").hidden = view !== "simulate";
   document.getElementById("view-stockpile").hidden = view !== "stockpile";
   document.getElementById("view-compare").hidden = view !== "compare";
+  document.getElementById("app-shell").classList.toggle("landing-mode", view === "landing");
   if (view === "stockpile" && state.mineralKey) runStockpile();
   updatePrintHeader();
+}
+
+// ── 랜딩 화면: 유관기관 바로가기 캐러셀 ───────────────────
+const CAROUSEL_PARTNERS = [
+  "한국자원공사", "조달청", "KOMIS 광물자원정보",
+  "국가자원안보전략센터", "산업통상부 무역안보과", "한국무역보험공사",
+];
+const carouselState = { index: 0, paused: false, timer: null };
+function renderCarousel() {
+  const n = CAROUSEL_PARTNERS.length;
+  const visible = [0, 1, 2, 3].map((i) => CAROUSEL_PARTNERS[(carouselState.index + i) % n]);
+  document.getElementById("landing-carousel-track").innerHTML = visible.map((name) =>
+    `<div class="carousel-item">${name}</div>`
+  ).join("");
+  document.getElementById("carousel-toggle").textContent = carouselState.paused ? "재생하기" : "정지하기";
+}
+function setupLandingCarousel() {
+  const advance = (dir) => {
+    const n = CAROUSEL_PARTNERS.length;
+    carouselState.index = (carouselState.index + dir + n) % n;
+    renderCarousel();
+  };
+  document.getElementById("carousel-prev").addEventListener("click", () => advance(-1));
+  document.getElementById("carousel-next").addEventListener("click", () => advance(1));
+  document.getElementById("carousel-toggle").addEventListener("click", () => {
+    carouselState.paused = !carouselState.paused;
+    renderCarousel();
+  });
+  carouselState.timer = setInterval(() => {
+    if (!carouselState.paused) advance(1);
+  }, 3000);
+  renderCarousel();
 }
 
 // ── ② 시나리오 비교 ───────────────────────────────────────
@@ -681,7 +731,7 @@ function setupCompareView(minerals) {
   const checksEl = document.getElementById("compare-checks");
   checksEl.innerHTML = minerals.map((m) => {
     const shortName = m.key.replace(/\s*\(.*\)/, "");
-    const accent = MINERAL_ACCENTS[m.key] || "#246beb";
+    const accent = MINERAL_ACCENTS[m.key] || "#0b3d78";
     return `
       <label class="compare-check checked" data-key="${m.key}">
         <input type="checkbox" checked>
@@ -727,7 +777,7 @@ async function runCompare() {
 
   const maxVal = results.length ? results[0].total_prod : 1;
   document.getElementById("compare-bars").innerHTML = results.map((r) => {
-    const accent = MINERAL_ACCENTS[r.mineral] || "#246beb";
+    const accent = MINERAL_ACCENTS[r.mineral] || "#0b3d78";
     const shortName = r.mineral.replace(/\s*\(.*\)/, "");
     const widthPct = Math.max(4, (r.total_prod / maxVal) * 100).toFixed(0);
     return `
@@ -747,7 +797,7 @@ async function runCompare() {
     </thead>
     <tbody>
       ${results.map((r) => {
-        const accent = MINERAL_ACCENTS[r.mineral] || "#246beb";
+        const accent = MINERAL_ACCENTS[r.mineral] || "#0b3d78";
         const shortName = r.mineral.replace(/\s*\(.*\)/, "");
         return `
           <tr>
@@ -763,7 +813,7 @@ async function runCompare() {
 
   // 모바일: 표 대신 세로 카드 리스트
   document.getElementById("compare-cards").innerHTML = results.map((r) => {
-    const accent = MINERAL_ACCENTS[r.mineral] || "#246beb";
+    const accent = MINERAL_ACCENTS[r.mineral] || "#0b3d78";
     const shortName = r.mineral.replace(/\s*\(.*\)/, "");
     return `
       <div class="compare-card">
