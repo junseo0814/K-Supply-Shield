@@ -942,7 +942,9 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
 
 @media (max-width: 860px) {
   .app-shell { display: block; }
-  .main { padding: 14px 14px 80px; max-width: none; }
+  /* clamp(최소, 화면폭 비례값, 최대) — 320px 작은 폰부터 860px까지 기종 구분 없이
+     화면 폭에 맞춰 여백이 매끄럽게 늘고 줄어듦 (기기별 분기 코드 불필요) */
+  .main { padding: clamp(12px, 4vw, 20px) clamp(12px, 4vw, 20px) 80px; max-width: none; }
 
   /* 공식 배너: 좁은 화면에서는 축약 문구 */
   .official-banner { height: 32px; font-size: 11px; padding: 0 12px; }
@@ -1096,7 +1098,7 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   .metric-grid { grid-template-columns: repeat(2, 1fr); }
   .dday-cards { grid-template-columns: 1fr; }
   .komis-grid { grid-template-columns: 1fr; }
-  .industry-row { grid-template-columns: 110px 1fr 70px; }
+  .industry-row { grid-template-columns: minmax(64px, 110px) 1fr minmax(48px, 70px); }
   .industry-toggle-btn {
     display: block;
     width: 100%;
@@ -1120,9 +1122,11 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   .login-card { width: min(380px, 90vw); padding: 32px 24px; }
 
   /* ── 간격 통일: 데스크톱은 24/20/16/14/12/10px 등이 섞여 있었는데,
-     좁은 화면에서는 두 단계(카드 안쪽 16px, 그리드 내부 간격 12px)로 고정 ── */
-  .main { gap: 16px; }
-  .block-head { margin-bottom: 14px; }
+     좁은 화면에서는 두 단계(카드 안쪽 / 그리드 내부 간격)로 고정.
+     고정 px 대신 clamp()로 화면 폭에 비례해 매끄럽게 스케일되도록 함 —
+     작은 폰(~360px)과 큰 폰(~430px+)이 같은 비율로 보이고, 특정 기종 분기 코드가 필요 없음 ── */
+  .main { gap: clamp(12px, 4vw, 18px); }
+  .block-head { margin-bottom: clamp(10px, 3vw, 16px); }
 
   .block,
   .metric-card,
@@ -1133,7 +1137,7 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   .stockpile-hint,
   .threshold-warn-card,
   .recommendation-box {
-    padding: 16px;
+    padding: clamp(12px, 4vw, 18px);
   }
 
   .metric-grid,
@@ -1141,13 +1145,16 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   .stockpile-grid-a,
   .komis-grid,
   .compare-cards,
-  .domino {
-    gap: 12px;
-  }
-
+  .domino,
   .industry-list,
   .compare-checks {
-    gap: 12px;
+    gap: clamp(8px, 3vw, 14px);
+  }
+
+  /* 초소형 화면(iPhone SE 등 ~360px 이하)에서는 KPI 2x2도 빡빡하므로 1열로 완화 */
+  @media (max-width: 360px) {
+    .metric-grid { grid-template-columns: 1fr; }
+    .metric-value { font-size: clamp(22px, 8vw, 28px); }
   }
 }
 
