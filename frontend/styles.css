@@ -1115,9 +1115,40 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
 
   /* 시나리오 비교: 표 대신 세로 카드 리스트 */
   #compare-table-wrap { display: none; }
-  .compare-cards { display: flex; flex-direction: column; gap: 10px; }
+  .compare-cards { display: flex; flex-direction: column; }
 
   .login-card { width: min(380px, 90vw); padding: 32px 24px; }
+
+  /* ── 간격 통일: 데스크톱은 24/20/16/14/12/10px 등이 섞여 있었는데,
+     좁은 화면에서는 두 단계(카드 안쪽 16px, 그리드 내부 간격 12px)로 고정 ── */
+  .main { gap: 16px; }
+  .block-head { margin-bottom: 14px; }
+
+  .block,
+  .metric-card,
+  .dday-card,
+  .compare-card,
+  .domino-box,
+  .option-card,
+  .stockpile-hint,
+  .threshold-warn-card,
+  .recommendation-box {
+    padding: 16px;
+  }
+
+  .metric-grid,
+  .dday-cards,
+  .stockpile-grid-a,
+  .komis-grid,
+  .compare-cards,
+  .domino {
+    gap: 12px;
+  }
+
+  .industry-list,
+  .compare-checks {
+    gap: 12px;
+  }
 }
 
 /* ── Print / PDF 저장 (window.print) ──────────────────────
