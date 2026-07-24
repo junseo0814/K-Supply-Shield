@@ -118,5 +118,8 @@ app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 
 @app.get("/")
+@app.get("/simulate")
+@app.get("/stockpile")
+@app.get("/compare")
 def index():
     return FileResponse(os.path.join(FRONTEND_DIR, 'index.html'))

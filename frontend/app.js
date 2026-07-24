@@ -128,7 +128,8 @@ async function init() {
 
   selectMineral(minerals[0].key);
   renderKomis();
-  switchView("landing");
+  const initialView = PATH_VIEWS[window.location.pathname] || "landing";
+  switchView(initialView, { pushHistory: false });
 }
 
 // ── ② 비축 조달 의사결정 ──────────────────────────────────
@@ -665,6 +666,11 @@ function startClock() {
 
 // ── 뷰 전환 (① 충격 시뮬레이션 / ② 비축 조달 / ③ 시나리오 비교) ──
 // 데스크톱 상단 탭(#view-tabs)과 모바일 하단 탭바(#mobile-tabbar) 둘 다 같은 방식으로 처리
+// FTA 강국 KOREA 레퍼런스처럼 메뉴마다 주소(URL)가 바뀌는 "페이지 이동" 느낌을 주기 위해
+// history.pushState로 SPA 라우팅을 구현 (실제 서버 요청 없이 주소창만 갱신, 뒤로/앞으로가기 지원)
+const VIEW_PATHS = { landing: "/", simulate: "/simulate", stockpile: "/stockpile", compare: "/compare" };
+const PATH_VIEWS = { "/": "landing", "/simulate": "simulate", "/stockpile": "stockpile", "/compare": "compare" };
+
 function setupViewTabs() {
   const onTabClick = (e) => {
     const btn = e.target.closest("[data-view]");
@@ -675,9 +681,16 @@ function setupViewTabs() {
   document.getElementById("mobile-tabbar").addEventListener("click", onTabClick);
   document.getElementById("landing-pills").addEventListener("click", onTabClick);
   document.querySelector(".top-nav-brand").addEventListener("click", () => switchView("landing"));
+  window.addEventListener("popstate", () => {
+    const view = PATH_VIEWS[window.location.pathname] || "landing";
+    switchView(view, { pushHistory: false });
+  });
 }
-function switchView(view) {
+function switchView(view, { pushHistory = true } = {}) {
   state.activeView = view;
+  if (pushHistory && window.location.pathname !== VIEW_PATHS[view]) {
+    history.pushState({ view }, "", VIEW_PATHS[view]);
+  }
   document.querySelectorAll("#view-tabs button, #mobile-tabbar button").forEach((btn) => {
     const isActive = btn.dataset.view === view;
     btn.classList.toggle("active", isActive);
@@ -687,6 +700,12 @@ function switchView(view) {
   document.getElementById("view-simulate").hidden = view !== "simulate";
   document.getElementById("view-stockpile").hidden = view !== "stockpile";
   document.getElementById("view-compare").hidden = view !== "compare";
+  const activePage = document.getElementById(`view-${view}`);
+  if (activePage) {
+    activePage.classList.remove("page-enter");
+    void activePage.offsetWidth; // 리플로우 강제 → 애니메이션 재시작
+    activePage.classList.add("page-enter");
+  }
   document.getElementById("app-shell").classList.toggle("landing-mode", view === "landing");
   if (view === "stockpile" && state.mineralKey) runStockpile();
   updatePrintHeader();

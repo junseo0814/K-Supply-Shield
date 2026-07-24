@@ -66,6 +66,11 @@ html, body {
 
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 
+/* 탭 전환 시 "새 페이지로 이동" 느낌을 주는 진입 애니메이션 */
+@keyframes page-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.page-enter { animation: page-enter .22s ease; }
+@media (prefers-reduced-motion: reduce) { .page-enter { animation: none; } }
+
 /* 접근성: 키보드 포커스 표시 (디지털 정부서비스 UI/UX 가이드라인 접근성 기준)
    일부 컴포넌트가 outline:none을 지정하므로 !important로 항상 보이도록 보장 */
 :focus-visible {
