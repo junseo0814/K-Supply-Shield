@@ -109,7 +109,7 @@ html, body {
   min-height: 100vh;
   width: 100%;
 }
-.app-shell[hidden], .login-screen[hidden] { display: none; }
+.app-shell[hidden], .login-screen[hidden], #view-landing[hidden] { display: none; }
 
 /* ── Sidebar ───────────────────────────────────────────── */
 .sidebar {
