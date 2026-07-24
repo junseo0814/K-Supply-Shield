@@ -2,6 +2,22 @@
 // 시각 언어는 디자인 목업(design_handoff_ksupply_shield)을 이식, 데이터/계산은 실제 백엔드 API 사용.
 const API = "";
 
+// 탭 전환이 실제 브라우저 풀 네비게이션(페이지 새로고침)이라, 광물/파라미터 선택값을
+// 세션스토리지에 저장해뒀다가 다음 페이지 로드 시 복원한다 (탭 이동할 때마다 초기화되지 않도록).
+const PARAM_KEYS = ["mineralKey", "restrictionPct", "importTrillion", "stockDays", "dailyCons", "releasePct", "importCost", "targetDays"];
+function saveParams() {
+  const data = {};
+  PARAM_KEYS.forEach((k) => { data[k] = state[k]; });
+  sessionStorage.setItem("ksupply_params", JSON.stringify(data));
+}
+function loadParams() {
+  try {
+    return JSON.parse(sessionStorage.getItem("ksupply_params"));
+  } catch {
+    return null;
+  }
+}
+
 // 광물별 포인트 컬러 (디자인 리뉴얼 목업의 oklch(0.56 0.14 {hue}) 값을 sRGB hex로 변환).
 // oklch() 원본을 그대로 쓰지 않는 이유: 일부 브라우저에서 특정 hue가 채도를 잃고
 // 회색으로 렌더링되는 문제가 있어 발표 환경 호환성을 위해 표준 hex로 고정.
@@ -99,6 +115,7 @@ async function init() {
     updateMineralChip();
     runSimulation();
     runStockpile();
+    saveParams();
   });
 
   document.getElementById("import-input").addEventListener("input", (e) => {
@@ -106,6 +123,7 @@ async function init() {
     updatePreview();
     runSimulation();
     runStockpile();
+    saveParams();
   });
 
   document.getElementById("dday-select").addEventListener("click", (e) => {
@@ -126,10 +144,35 @@ async function init() {
   setupStockpileView();
   setupLandingCarousel();
 
-  selectMineral(minerals[0].key);
+  const persisted = loadParams();
+  selectMineral((persisted && state.minerals[persisted.mineralKey]) ? persisted.mineralKey : minerals[0].key);
+  if (persisted) {
+    state.restrictionPct = persisted.restrictionPct;
+    state.importTrillion = persisted.importTrillion;
+    state.stockDays = persisted.stockDays;
+    state.dailyCons = persisted.dailyCons;
+    state.releasePct = persisted.releasePct;
+    state.importCost = persisted.importCost;
+    state.targetDays = persisted.targetDays;
+    document.getElementById("restriction-range").value = state.restrictionPct;
+    document.getElementById("restriction-value").textContent = `${state.restrictionPct}%`;
+    document.getElementById("import-input").value = state.importTrillion;
+    document.getElementById("stock-days-range").value = state.stockDays;
+    document.getElementById("stock-days-value").textContent = `${state.stockDays}일`;
+    document.getElementById("daily-cons-input").value = state.dailyCons;
+    document.getElementById("release-pct-range").value = state.releasePct;
+    document.getElementById("release-pct-value").textContent = `${state.releasePct}%`;
+    document.getElementById("import-cost-input").value = state.importCost;
+    document.getElementById("target-days-range").value = state.targetDays;
+    document.getElementById("target-days-value").textContent = `${state.targetDays}일`;
+    updatePreview();
+    updateMineralChip();
+    runSimulation();
+    runStockpile();
+  }
   renderKomis();
   const initialView = PATH_VIEWS[window.location.pathname] || "landing";
-  switchView(initialView, { pushHistory: false });
+  switchView(initialView);
 }
 
 // ── ② 비축 조달 의사결정 ──────────────────────────────────
@@ -138,24 +181,29 @@ function setupStockpileView() {
     state.stockDays = Number(e.target.value);
     document.getElementById("stock-days-value").textContent = `${state.stockDays}일`;
     runStockpile();
+    saveParams();
   });
   document.getElementById("daily-cons-input").addEventListener("input", (e) => {
     state.dailyCons = Number(e.target.value) || 0;
     runStockpile();
+    saveParams();
   });
   document.getElementById("release-pct-range").addEventListener("input", (e) => {
     state.releasePct = Number(e.target.value);
     document.getElementById("release-pct-value").textContent = `${state.releasePct}%`;
     runStockpile();
+    saveParams();
   });
   document.getElementById("import-cost-input").addEventListener("input", (e) => {
     state.importCost = Number(e.target.value) || 0;
     runStockpile();
+    saveParams();
   });
   document.getElementById("target-days-range").addEventListener("input", (e) => {
     state.targetDays = Number(e.target.value);
     document.getElementById("target-days-value").textContent = `${state.targetDays}일`;
     runStockpile();
+    saveParams();
   });
 }
 
@@ -431,6 +479,7 @@ function selectMineral(key) {
   renderDdaySelect();
   runSimulation();
   runStockpile();
+  saveParams();
 }
 
 // 모바일 상단바의 광물 칩("{mineral}·{pct}%") 갱신
@@ -643,6 +692,7 @@ function setupAuth() {
   });
   const doLogout = () => {
     sessionStorage.removeItem("ksupply_logged_in");
+    sessionStorage.removeItem("ksupply_params");
     showLogin();
   };
   document.getElementById("logout-btn").addEventListener("click", doLogout);
@@ -666,8 +716,9 @@ function startClock() {
 
 // ── 뷰 전환 (① 충격 시뮬레이션 / ② 비축 조달 / ③ 시나리오 비교) ──
 // 데스크톱 상단 탭(#view-tabs)과 모바일 하단 탭바(#mobile-tabbar) 둘 다 같은 방식으로 처리
-// FTA 강국 KOREA 레퍼런스처럼 메뉴마다 주소(URL)가 바뀌는 "페이지 이동" 느낌을 주기 위해
-// history.pushState로 SPA 라우팅을 구현 (실제 서버 요청 없이 주소창만 갱신, 뒤로/앞으로가기 지원)
+// FTA 강국 KOREA 레퍼런스처럼 실제로 페이지가 넘어가는 느낌을 주기 위해, SPA 방식(pushState)
+// 대신 진짜 브라우저 풀 네비게이션(location.href)을 사용. 광물/파라미터 선택값은 새로고침
+// 후에도 유지되도록 saveParams()/loadParams()로 세션스토리지에 저장·복원한다.
 const VIEW_PATHS = { landing: "/", simulate: "/simulate", stockpile: "/stockpile", compare: "/compare" };
 const PATH_VIEWS = { "/": "landing", "/simulate": "simulate", "/stockpile": "stockpile", "/compare": "compare" };
 
@@ -675,22 +726,15 @@ function setupViewTabs() {
   const onTabClick = (e) => {
     const btn = e.target.closest("[data-view]");
     if (!btn) return;
-    switchView(btn.dataset.view);
+    window.location.href = VIEW_PATHS[btn.dataset.view] || "/";
   };
   document.getElementById("view-tabs").addEventListener("click", onTabClick);
   document.getElementById("mobile-tabbar").addEventListener("click", onTabClick);
   document.getElementById("landing-pills").addEventListener("click", onTabClick);
-  document.querySelector(".top-nav-brand").addEventListener("click", () => switchView("landing"));
-  window.addEventListener("popstate", () => {
-    const view = PATH_VIEWS[window.location.pathname] || "landing";
-    switchView(view, { pushHistory: false });
-  });
+  document.querySelector(".top-nav-brand").addEventListener("click", () => { window.location.href = "/"; });
 }
-function switchView(view, { pushHistory = true } = {}) {
+function switchView(view) {
   state.activeView = view;
-  if (pushHistory && window.location.pathname !== VIEW_PATHS[view]) {
-    history.pushState({ view }, "", VIEW_PATHS[view]);
-  }
   document.querySelectorAll("#view-tabs button, #mobile-tabbar button").forEach((btn) => {
     const isActive = btn.dataset.view === view;
     btn.classList.toggle("active", isActive);
