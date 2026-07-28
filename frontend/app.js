@@ -1009,15 +1009,22 @@ function renderSimHeatmapTable(r) {
 function renderSimPathway(r) {
   const shortName = r.mineral.replace(/\s*\(.*\)/, "");
   const chain = r.mineral_info.supply_chain || [];
-  const nodes = [shortName, "항만", ...chain];
-  document.getElementById("sim-pathway").innerHTML = nodes.map((label, idx) => {
-    const shocked = idx === 0 && r.restriction_pct > 50;
-    const isLast = idx === nodes.length - 1;
-    return `<div class="pathway-item">
-      <div class="pathway-node${shocked ? " shocked" : ""}">${label}</div>
-      ${!isLast ? '<div class="pathway-arrow"></div>' : ""}
-    </div>`;
-  }).join("");
+  const nodes = [shortName, "항만", ...chain]; // 광물 7종 전부 4단계 공급망을 가져 총 6개 노드 → 3+3 두 줄로 고정 배치
+  const rows = [];
+  for (let i = 0; i < nodes.length; i += 3) rows.push(nodes.slice(i, i + 3));
+
+  document.getElementById("sim-pathway").innerHTML = rows.map((rowNodes, rowIdx) => `
+    <div class="pathway-line">
+      ${rowNodes.map((label, idx) => {
+        const globalIdx = rowIdx * 3 + idx;
+        const shocked = globalIdx === 0 && r.restriction_pct > 50;
+        const isLastInRow = idx === rowNodes.length - 1;
+        return `<div class="pathway-item">
+          <div class="pathway-node${shocked ? " shocked" : ""}">${label}</div>
+          ${!isLastInRow ? '<div class="pathway-arrow"></div>' : ""}
+        </div>`;
+      }).join("")}
+    </div>`).join("");
 }
 
 const SIM_RISK_MAP = {
