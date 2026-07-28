@@ -567,8 +567,20 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   padding: 14px 4px;
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
+  cursor: pointer;
 }
+.reports-list-item:hover { background: var(--surface-muted); }
+.reports-list-item.open { background: var(--accent-tint); }
 .reports-list-item:last-child { border-bottom: none; }
+.reports-expand-icon { font-size: 11px; color: var(--text-quaternary); width: 10px; flex-shrink: 0; }
+.reports-detail {
+  padding: 4px 4px 18px 34px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  background: var(--accent-tint);
+}
 .reports-date { font-size: 12px; color: var(--text-quaternary); width: 84px; flex-shrink: 0; }
 .reports-cat-badge {
   font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 3px;
@@ -1751,9 +1763,9 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   z-index: 9999;
   pointer-events: none;
   opacity: 0.08;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='420' height='240'><g transform='rotate(-30 210 120)'><image href='/static/assets/motie-logo-horizontal.png' x='165' y='60' width='90' height='50'/><text x='210' y='140' font-size='19' font-family='sans-serif' font-weight='700' fill='rgb(27,37,86)' text-anchor='middle'>대외비 · 홍길동 사무관</text></g></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='620' height='240'><g transform='rotate(-30 310 120)'><image href='/static/assets/motie-logo-horizontal.png' x='265' y='60' width='90' height='50'/><text x='310' y='140' font-size='19' font-family='sans-serif' font-weight='700' fill='rgb(27,37,86)' text-anchor='middle'>대외비 · 자원공급망관리과 홍길동 사무관</text></g></svg>");
   background-repeat: repeat;
-  background-size: min(32vw, 420px) auto;
+  background-size: min(47vw, 620px) auto;
 }
 @media print {
   .watermark-overlay { display: none !important; }
@@ -1776,7 +1788,7 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
     display: block !important;
     color: #000;
     font-family: var(--font);
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='260'><text x='160' y='135' font-size='24' font-family='sans-serif' font-weight='700' fill='rgba(0,0,0,0.10)' text-anchor='middle' transform='rotate(-30 160 130)'>대외비 · 홍길동 사무관</text></svg>");
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='460' height='260'><text x='230' y='135' font-size='22' font-family='sans-serif' font-weight='700' fill='rgba(0,0,0,0.10)' text-anchor='middle' transform='rotate(-30 230 130)'>대외비 · 자원공급망관리과 홍길동 사무관</text></svg>");
     background-repeat: repeat;
   }
   .report-table { break-inside: avoid; }

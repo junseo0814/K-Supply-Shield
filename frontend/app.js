@@ -1419,7 +1419,7 @@ function renderDashboard() {
 }
 
 // ── ⑤ 정책·보고서 (data/publications.csv, data/report_teasers.csv 직접 편집 관리) ──
-const reportsState = { cat: "전체" };
+const reportsState = { cat: "전체", expanded: new Set() };
 function setupReportsView() {
   document.getElementById("publication-cards").innerHTML = state.reportTeasers.map((r) => `
     <div class="color-block-card c-${r.color}">
@@ -1431,7 +1431,17 @@ function setupReportsView() {
     const btn = e.target.closest("button[data-cat]");
     if (!btn) return;
     reportsState.cat = btn.dataset.cat;
+    reportsState.expanded.clear();
     document.querySelectorAll("#reports-filter button").forEach((b) => b.classList.toggle("active", b === btn));
+    renderReportsList();
+  });
+
+  document.getElementById("reports-list").addEventListener("click", (e) => {
+    const row = e.target.closest(".reports-list-item[data-idx]");
+    if (!row) return;
+    const idx = Number(row.dataset.idx);
+    if (reportsState.expanded.has(idx)) reportsState.expanded.delete(idx);
+    else reportsState.expanded.add(idx);
     renderReportsList();
   });
 }
@@ -1441,13 +1451,18 @@ function renderReportsList() {
     ? state.publications
     : state.publications.filter((p) => p.category === reportsState.cat);
   document.getElementById("reports-meta").textContent = `${filtered.length}건`;
-  document.getElementById("reports-list").innerHTML = filtered.map((p) => `
-    <div class="reports-list-item">
+  document.getElementById("reports-list").innerHTML = filtered.map((p, idx) => {
+    const open = reportsState.expanded.has(idx);
+    return `
+    <div class="reports-list-item${open ? " open" : ""}" data-idx="${idx}">
+      <span class="reports-expand-icon">${open ? "▾" : "▸"}</span>
       <span class="reports-date">${p.date}</span>
       <span class="reports-cat-badge">${p.category}</span>
       <span class="reports-title">${p.title}</span>
-      <button type="button" class="reports-dl-btn" disabled title="데모 버전에서는 다운로드가 제공되지 않습니다">다운로드</button>
-    </div>`).join("");
+      <button type="button" class="reports-dl-btn" disabled title="데모 버전에서는 다운로드가 제공되지 않습니다" onclick="event.stopPropagation()">다운로드</button>
+    </div>
+    ${open ? `<div class="reports-detail">${p.content || "상세 내용이 아직 등록되지 않았습니다."}</div>` : ""}`;
+  }).join("");
 }
 
 // ── 랜딩 화면: 유관기관 바로가기 캐러셀 ───────────────────
