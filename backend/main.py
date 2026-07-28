@@ -17,6 +17,16 @@ DATA_DIR = os.path.join(BASE_DIR, 'data')
 app = FastAPI(title="K-Supply Shield API")
 
 
+class NoCacheStaticFiles(StaticFiles):
+    """정적 파일(HTML/CSS/JS) 배포 후에도 브라우저가 이전 버전을 캐시해서 보여주는
+    문제를 막기 위해 매 요청마다 재검증하도록 강제한다 (ETag/Last-Modified는 유지되어
+    변경 없으면 304로 응답하므로 트래픽 부담은 적음)."""
+    def file_response(self, *args, **kwargs):
+        resp = super().file_response(*args, **kwargs)
+        resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+
 @app.get("/api/minerals")
 def get_minerals():
     return [
@@ -114,12 +124,42 @@ def get_comtrade():
     return df.to_dict(orient='records')
 
 
-app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+# 아래 3개는 현재 data/*.csv 직접 수기 편집으로 관리한다 (프로토타입 단계).
+# 실 API 연동 시에는 이 함수 내부만 외부 API 호출로 교체하면 되고, 프론트엔드는 그대로 둔다.
+@app.get("/api/alerts")
+def get_alerts():
+    path = os.path.join(DATA_DIR, 'alerts.csv')
+    if not os.path.exists(path):
+        return []
+    df = pd.read_csv(path, encoding='utf-8-sig')
+    return df.to_dict(orient='records')
+
+
+@app.get("/api/publications")
+def get_publications():
+    path = os.path.join(DATA_DIR, 'publications.csv')
+    if not os.path.exists(path):
+        return []
+    df = pd.read_csv(path, encoding='utf-8-sig')
+    return df.to_dict(orient='records')
+
+
+@app.get("/api/report-teasers")
+def get_report_teasers():
+    path = os.path.join(DATA_DIR, 'report_teasers.csv')
+    if not os.path.exists(path):
+        return []
+    df = pd.read_csv(path, encoding='utf-8-sig')
+    return df.to_dict(orient='records')
+
+
+app.mount("/static", NoCacheStaticFiles(directory=FRONTEND_DIR), name="static")
 
 
 @app.get("/")
 @app.get("/simulate")
 @app.get("/stockpile")
 @app.get("/compare")
+@app.get("/reports")
 def index():
     return FileResponse(os.path.join(FRONTEND_DIR, 'index.html'))

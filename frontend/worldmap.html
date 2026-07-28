@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<script src="https://unpkg.com/d3@7.9.0/dist/d3.min.js" integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js" integrity="sha384-Ukv1p/xTma6P4/2bY5KzWBw+ydSpXmhCMtyciIQVDJ1RmOxtCYNMF1uXT9T63H67" crossorigin="anonymous"></script>
+<!-- Windows(Segoe UI Emoji)는 국기 이모지(regional indicator)를 렌더링하지 못해 빈 칸으로 보이는 문제가
+     있어, twemoji로 국기 이모지를 SVG 이미지로 변환해 OS와 무관하게 항상 보이도록 한다. -->
+<script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
+<style>
+  html,body{margin:0;padding:0;background:#E4E9F0;overflow:hidden;font-family:'Noto Sans KR',sans-serif;}
+  svg{display:block;width:100%;height:100%;}
+  .country{stroke:#FFFFFF;stroke-width:0.75px;cursor:default;}
+  .country.dep{cursor:pointer;}
+  .country.dep:hover{opacity:0.85;}
+  .label{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:6px;background:#1B2556;color:#FFFFFF;font-size:12px;font-weight:700;padding:4px 12px 4px 4px;border-radius:999px;white-space:nowrap;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.15);}
+  .label .dot{width:22px;height:22px;border-radius:50%;background:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;overflow:hidden;}
+  .label .dot img.emoji{width:16px;height:16px;}
+  #tooltip{position:absolute;pointer-events:none;background:#FFFFFF;border:1px solid #DDDDDD;padding:6px 10px;font-size:12px;color:#222222;display:none;white-space:nowrap;}
+</style>
+</head>
+<body>
+<div id="tooltip"></div>
+<div id="labels"></div>
+<svg id="map"></svg>
+<script>
+// ISO numeric -> dependency profile (수입 의존도 데이터)
+var DATA = {
+  156: { name: '중국', dependency: 62, minerals: '희토류, 리튬', level: 'high', risk: '경계', flag: '🇨🇳' },
+  180: { name: '콩고민주공화국', dependency: 78, minerals: '코발트', level: 'high', risk: '위험', flag: '🇨🇩' },
+  152: { name: '칠레', dependency: 45, minerals: '리튬, 구리', level: 'mid', risk: '경계', flag: '🇨🇱' },
+  36:  { name: '호주', dependency: 38, minerals: '리튬, 니켈', level: 'mid', risk: '정상', flag: '🇦🇺' },
+  608: { name: '필리핀', dependency: 30, minerals: '니켈', level: 'low', risk: '정상', flag: '🇵🇭' },
+  360: { name: '인도네시아', dependency: 35, minerals: '니켈', level: 'mid', risk: '정상', flag: '🇮🇩' }
+};
+var COLORS = { high: '#1B2556', mid: '#3B9AE1', low: '#8FC1EA', none: '#FFFFFF' };
+
+var svg = d3.select('#map');
+var width = window.innerWidth, height = window.innerHeight;
+svg.attr('viewBox', '0 0 ' + width + ' ' + height);
+var projection = d3.geoNaturalEarth1();
+var path = d3.geoPath().projection(projection);
+var tooltip = document.getElementById('tooltip');
+var mode = 'all';
+
+fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json')
+  .then(function(r){ return r.json(); })
+  .then(function(topo){
+    var geo = topojson.feature(topo, topo.objects.countries);
+    projection.fitSize([width - 8, height - 8], geo);
+    render(geo);
+  });
+
+function getInfo(id){ return DATA[String(Number(id))]; }
+
+function render(geo){
+  var sel = svg.selectAll('path').data(geo.features);
+  sel.enter().append('path')
+    .attr('class', function(d){ return getInfo(d.id) ? 'country dep' : 'country'; })
+    .attr('d', path)
+    .attr('fill', function(d){
+      var info = getInfo(d.id);
+      if (!info) return '#FFFFFF';
+      if (mode === 'risk' && info.level !== 'high') return '#FFFFFF';
+      return COLORS[info.level];
+    })
+    .on('mousemove', function(event, d){
+      var info = getInfo(d.id);
+      if (!info) { tooltip.style.display = 'none'; return; }
+      tooltip.style.display = 'block';
+      tooltip.style.left = (event.offsetX + 14) + 'px';
+      tooltip.style.top = (event.offsetY + 8) + 'px';
+      tooltip.innerHTML = '<b>' + info.name + '</b> · 의존도 ' + info.dependency + '% · ' + info.minerals;
+    })
+    .on('mouseleave', function(){ tooltip.style.display = 'none'; })
+    .on('click', function(event, d){
+      var info = getInfo(d.id);
+      if (!info) return;
+      parent.postMessage({ type: 'countryClick', ...info }, '*');
+    });
+
+  var labelsEl = document.getElementById('labels');
+  labelsEl.style.position = 'absolute';
+  labelsEl.style.inset = '0';
+  labelsEl.style.pointerEvents = 'none';
+  var leaderLayer = svg.append('g').attr('class', 'leaders');
+  var ids = Object.keys(DATA);
+  var OFFSETS = {
+    156: [110, -70],   // 중국
+    180: [-110, -10],  // 콩고민주공화국
+    152: [-90, 50],    // 칠레
+    36:  [-10, 90],    // 호주
+    608: [70, 40],     // 필리핀
+    360: [40, 95]      // 인도네시아
+  };
+  ids.forEach(function(id){
+    var feature = geo.features.filter(function(f){ return Number(f.id) === Number(id); })[0];
+    if (!feature) return;
+    var info = DATA[id];
+    var c = path.centroid(feature);
+    if (!c || isNaN(c[0]) || isNaN(c[1])) c = path.bounds(feature).reduce(function(a,b){ return [(a[0]+b[0])/2, (a[1]+b[1])/2]; });
+    if (!c || isNaN(c[0])) return;
+    var offset = OFFSETS[id] || [80, -60];
+    var lx = Math.max(60, Math.min(width - 60, c[0] + offset[0]));
+    var ly = Math.max(20, Math.min(height - 20, c[1] + offset[1]));
+
+    leaderLayer.append('circle').attr('cx', c[0]).attr('cy', c[1]).attr('r', 3).attr('fill', '#1B2556');
+    leaderLayer.append('line')
+      .attr('x1', c[0]).attr('y1', c[1]).attr('x2', lx).attr('y2', ly)
+      .attr('stroke', '#1B2556').attr('stroke-width', 1).attr('stroke-dasharray', '3,3');
+
+    var div = document.createElement('div');
+    div.className = 'label';
+    div.style.left = lx + 'px';
+    div.style.top = ly + 'px';
+    div.style.pointerEvents = 'auto';
+    div.innerHTML = '<span class="dot">' + info.flag + '</span>' + info.name;
+    div.addEventListener('click', function(){ parent.postMessage({ type: 'countryClick', ...info }, '*'); });
+    labelsEl.appendChild(div);
+  });
+
+  if (window.twemoji) twemoji.parse(labelsEl, { folder: 'svg', ext: '.svg' });
+}
+
+window.addEventListener('message', function(e){
+  if (e.data && e.data.type === 'setMode') {
+    mode = e.data.mode;
+    svg.selectAll('path').attr('fill', function(d){
+      var info = getInfo(d.id);
+      if (!info) return '#FFFFFF';
+      if (mode === 'risk' && info.level !== 'high') return '#FFFFFF';
+      return COLORS[info.level];
+    });
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&amp;display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body{margin:0;background:#F1F2F3;}
+    a{color:#007AFF;text-decoration:none;}
+    a:hover{color:#1B2556;text-decoration:underline;}
+    * { box-sizing: border-box; }
+  </style>
+</helmet>
+
+<div style="font-family:'Noto Sans KR',sans-serif;background:#F1F2F3;min-height:100vh;color:#222222;">
+
+  <sc-if value="{{ notLoggedIn }}" hint-placeholder-val="{{ true }}">
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F1F2F3;">
+      <div style="background:#FFFFFF;border:1px solid #DDDDDD;width:380px;padding:40px 36px;">
+        <div style="display:flex;justify-content:center;margin-bottom:12px;">
+          <img src="./assets/motie-logo-stacked.png" alt="산업통상부" style="height:96px;width:auto;">
+        </div>
+        <div style="text-align:center;font-size:11px;color:#999999;margin-bottom:28px;">핵심광물 공급망 관리시스템</div>
+        <div style="margin-bottom:14px;">
+          <div style="font-size:12px;font-weight:700;color:#333333;margin-bottom:6px;">아이디</div>
+          <input type="text" value="{{ loginId }}" onChange="{{ onLoginIdChange }}" placeholder="아이디를 입력하세요" style="width:100%;height:40px;border:1px solid #DDDDDD;border-radius:3px;padding:0 10px;font-size:13px;">
+        </div>
+        <div style="margin-bottom:22px;">
+          <div style="font-size:12px;font-weight:700;color:#333333;margin-bottom:6px;">비밀번호</div>
+          <input type="password" value="{{ loginPw }}" onChange="{{ onLoginPwChange }}" placeholder="비밀번호를 입력하세요" style="width:100%;height:40px;border:1px solid #DDDDDD;border-radius:3px;padding:0 10px;font-size:13px;">
+        </div>
+        <button onClick="{{ doLogin }}" style="width:100%;height:44px;background:#1B2556;color:#FFFFFF;font-weight:700;font-size:14px;border:none;cursor:pointer;margin-bottom:14px;">로그인</button>
+        <div style="display:flex;justify-content:center;gap:14px;font-size:11px;">
+          <a href="#">아이디 찾기</a><span style="color:#DDDDDD;">|</span><a href="#">비밀번호 찾기</a>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ loggedIn }}" hint-placeholder-val="{{ false }}">
+
+  <div style="height:60px;background:#FFFFFF;border-bottom:1px solid #DDDDDD;display:flex;align-items:center;padding:0 24px;color:#1B2556;">
+    <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+      <div style="display:flex;align-items:center;">
+        <img src="./assets/motie-logo-horizontal.png" alt="산업통상부" style="height:42px;width:auto;display:block;">
+      </div>
+      <div style="width:1px;height:24px;background:#DDDDDD;margin:0 4px;"></div>
+      <div>
+        <div style="font-size:16px;font-weight:700;font-style:italic;line-height:1.2;color:#1B2556;">K-Supply Shield</div>
+        <div style="font-size:11px;color:#666666;">핵심광물 공급망 관리시스템&nbsp;</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px;margin-left:auto;overflow-x:auto;">
+      <sc-for list="{{ gnbItems }}" as="item" hint-placeholder-count="5">
+        <div onClick="{{ item.onClick }}" style="{{ item.style }}">{{ item.label }}</div>
+      </sc-for>
+    </div>
+    <div style="display:flex;align-items:center;gap:20px;font-size:13px;margin-left:32px;flex-shrink:0;color:#333333;">
+      <div>홍길동 책임관</div>
+    </div>
+  </div>
+
+  <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}">
+    <div style="background:#C0392B;color:#FFFFFF;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;font-size:13px;">
+      <div>⚠ 코발트 공급 위험 감지 — 즉각 조치 필요</div>
+      <button style="background:transparent;border:1px solid #FFFFFF;color:#FFFFFF;padding:6px 14px;font-size:12px;cursor:pointer;white-space:nowrap;">바로가기</button>
+    </div>
+
+    <div style="max-width:1280px;margin:0 auto;padding:24px;">
+
+      <div style="background:#FFFFFF;border:1px solid #DDDDDD;margin-bottom:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #F1F2F3;">
+          <div style="font-size:14px;font-weight:700;border-left:4px solid #1B2556;padding-left:10px;">광물 공급망 지도</div>
+          <div style="display:flex;gap:4px;">
+            <sc-for list="{{ heroTabs }}" as="tab" hint-placeholder-count="3">
+              <div onClick="{{ tab.onClick }}" style="{{ tab.style }}">{{ tab.label }}</div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;">
+          <div style="flex:1;height:380px;position:relative;">
+            <iframe ref="{{ mapRef }}" src="./worldmap.html" style="width:100%;height:100%;border:none;display:block;"></iframe>
+          </div>
+          <div style="width:280px;border-left:1px solid #DDDDDD;padding:16px 20px;flex-shrink:0;">
+            <div style="font-size:12px;font-weight:700;color:#1B2556;margin-bottom:12px;">국가 상세 정보</div>
+            <sc-if value="{{ selectedCountry }}" hint-placeholder-val="{{ null }}">
+              <div style="font-size:16px;font-weight:700;margin-bottom:6px;">{{ selectedCountry.name }}</div>
+              <div style="font-size:12px;color:#666666;margin-bottom:14px;">수출 광물: {{ selectedCountry.minerals }}</div>
+              <div style="font-size:12px;color:#333333;margin-bottom:6px;">수입 의존도</div>
+              <div style="font-size:28px;font-weight:700;color:#1B2556;margin-bottom:14px;">{{ selectedCountry.dependency }}%</div>
+              <div style="font-size:11px;padding:4px 10px;display:inline-block;border-radius:3px;background:#C0392B;color:#FFFFFF;">{{ selectedCountry.risk }}</div>
+            </sc-if>
+            <sc-if value="{{ noSelection }}" hint-placeholder-val="{{ true }}">
+              <div style="font-size:12px;color:#999999;line-height:1.6;">지도에서 국가를 클릭하면<br>의존도·위험도 상세 정보가<br>표시됩니다.</div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:24px;">
+        <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="6">
+          <div style="background:#FFFFFF;border:1px solid #DDDDDD;padding:14px 16px;">
+            <div style="font-size:12px;color:#666666;margin-bottom:8px;">{{ k.label }}</div>
+            <div style="font-size:26px;font-weight:700;">
+              <span style="color:{{ k.color }}">{{ k.value }}</span><span style="font-size:13px;color:#999999;"> {{ k.unit }}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #DDDDDD;margin-bottom:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #F1F2F3;">
+          <div style="font-size:14px;font-weight:700;border-left:4px solid #1B2556;padding-left:10px;">최신 알림</div>
+          <div style="display:flex;gap:4px;">
+            <sc-for list="{{ alertTabs }}" as="tab" hint-placeholder-count="4">
+              <div onClick="{{ tab.onClick }}" style="{{ tab.style }}">{{ tab.label }}</div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="padding:4px 20px;">
+          <sc-for list="{{ currentAlerts }}" as="a" hint-placeholder-count="5">
+            <div style="display:flex;align-items:center;gap:16px;padding:10px 0;border-bottom:1px solid #F1F2F3;font-size:13px;">
+              <div style="width:100px;flex-shrink:0;color:#999999;font-size:11px;">{{ a.time }}</div>
+              <div style="flex:1;">{{ a.title }}</div>
+              <div style="font-size:10px;padding:3px 8px;border-radius:3px;color:#FFFFFF;flex-shrink:0;background:{{ a.color }}">{{ a.risk }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
+        <sc-for list="{{ reports }}" as="r" hint-placeholder-count="3">
+          <div style="background:{{ r.color }};color:#FFFFFF;padding:20px;min-height:110px;display:flex;flex-direction:column;justify-content:space-between;">
+            <div style="font-size:15px;font-weight:700;">{{ r.title }}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.85);">{{ r.desc }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:24px;">
+        <sc-for list="{{ partners }}" as="p" hint-placeholder-count="5">
+          <div style="background:#FFFFFF;border:1px solid #DDDDDD;padding:10px 22px;font-size:13px;color:#1B2556;font-weight:500;">{{ p }}</div>
+        </sc-for>
+      </div>
+
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isSimulator }}" hint-placeholder-val="{{ false }}">
+    <div style="height:48px;background:{{ simHeaderBg }};display:flex;align-items:center;justify-content:space-between;padding:0 24px;color:#FFFFFF;transition:background 0.3s ease;">
+      <div style="font-size:15px;font-weight:700;">충격 시뮬레이터</div>
+      <div style="display:flex;align-items:center;gap:16px;font-size:12px;">
+        <div>{{ simLastRunLabel }}</div>
+        <button onClick="{{ resetSimulation }}" style="background:transparent;border:1px solid #FFFFFF;color:#FFFFFF;padding:6px 14px;font-size:12px;cursor:pointer;">시뮬레이션 초기화</button>
+      </div>
+    </div>
+
+    <div style="max-width:1280px;margin:0 auto;padding:24px;display:flex;gap:20px;align-items:flex-start;">
+
+      <div style="width:300px;flex-shrink:0;background:#FFFFFF;border:1px solid #DDDDDD;padding:16px 20px;">
+        <div style="font-size:14px;font-weight:700;border-left:4px solid #1B2556;padding-left:10px;margin-bottom:16px;">충격 시나리오 설정</div>
+
+        <div style="margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:700;color:#333333;margin-bottom:6px;">① 광물 선택</div>
+          <select value="{{ simMineral }}" onChange="{{ onMineralChange }}" style="width:100%;height:34px;border:1px solid #DDDDDD;border-radius:3px;padding:0 8px;font-size:13px;background:#FFFFFF;">
+            <sc-for list="{{ mineralOptions }}" as="m" hint-placeholder-count="6">
+              <option value="{{ m.value }}">{{ m.label }}</option>
+            </sc-for>
+          </select>
+          <div style="margin-top:8px;display:inline-block;background:#1B2556;color:#FFFFFF;font-size:11px;padding:3px 10px;border-radius:3px;">{{ simMineralLabel }}</div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:700;color:#333333;margin-bottom:6px;">② 충격 유형</div>
+          <sc-for list="{{ shockTypes }}" as="s" hint-placeholder-count="5">
+            <div onClick="{{ s.onClick }}" style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;cursor:pointer;color:#333333;">
+              <div style="{{ s.dotStyle }}"></div>{{ s.label }}
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+            <div style="font-size:12px;font-weight:700;color:#333333;">③ 공급 감소율</div>
+            <div style="font-size:20px;font-weight:700;color:#1B2556;">{{ simIntensity }}%</div>
+          </div>
+          <input type="range" min="0" max="100" value="{{ simIntensity }}" onChange="{{ onIntensityChange }}" style="width:100%;accent-color:#1B2556;">
+          <div style="font-size:11px;text-align:right;color:{{ simIntensityColor }};font-weight:700;">{{ simIntensityLabel }}</div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:700;color:#333333;margin-bottom:6px;">④ 충격 지속 기간</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;">
+            <sc-for list="{{ durations }}" as="d" hint-placeholder-count="5">
+              <div onClick="{{ d.onClick }}" style="{{ d.style }}">{{ d.label }}</div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="margin-bottom:20px;">
+          <div style="font-size:12px;font-weight:700;color:#333333;margin-bottom:6px;">⑤ 대상 국가/지역</div>
+          <sc-for list="{{ countryChecks }}" as="c" hint-placeholder-count="7">
+            <div onClick="{{ c.onClick }}" style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;cursor:pointer;">
+              <div style="{{ c.boxStyle }}">{{ c.checkMark }}</div>{{ c.label }}
+            </div>
+          </sc-for>
+        </div>
+
+        <button onClick="{{ runSimulation }}" style="width:100%;height:44px;background:#1B2556;color:#FFFFFF;font-weight:700;font-size:14px;border:none;cursor:pointer;">{{ runButtonLabel }}</button>
+      </div>
+
+      <div style="flex:1;min-width:0;">
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px;">
+          <sc-for list="{{ simKpis }}" as="k" hint-placeholder-count="4">
+            <div style="background:#FFFFFF;border:1px solid #DDDDDD;padding:16px;">
+              <div style="font-size:12px;color:#666666;margin-bottom:8px;">{{ k.label }}</div>
+              <div style="font-size:36px;font-weight:700;color:{{ k.color }}">{{ k.value }}<span style="font-size:14px;color:#999999;"> {{ k.unit }}</span></div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="background:#FFFFFF;border:1px solid #DDDDDD;margin-bottom:16px;">
+          <div style="padding:14px 20px;border-bottom:1px solid #F1F2F3;font-size:14px;font-weight:700;border-left:4px solid #1B2556;padding-left:20px;">공급량 변화 예측 (시뮬레이션)</div>
+          <div style="padding:16px 20px;">
+            <canvas ref="{{ chartRef }}" height="90"></canvas>
+          </div>
+        </div>
+
+        <div style="background:#FFFFFF;border:1px solid #DDDDDD;margin-bottom:16px;overflow:hidden;">
+          <div style="padding:14px 20px;border-bottom:1px solid #F1F2F3;font-size:14px;font-weight:700;border-left:4px solid #1B2556;padding-left:20px;">국가별 영향도</div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr style="background:#1B2556;color:#FFFFFF;">
+                <th style="padding:8px 12px;text-align:left;font-weight:700;">광물</th>
+                <th style="padding:8px 12px;text-align:left;font-weight:700;">수입 의존도</th>
+                <th style="padding:8px 12px;text-align:left;font-weight:700;">충격 전</th>
+                <th style="padding:8px 12px;text-align:left;font-weight:700;">충격 후</th>
+                <th style="padding:8px 12px;text-align:left;font-weight:700;">변화율</th>
+                <th style="padding:8px 12px;text-align:left;font-weight:700;">위험도</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ heatmapRows }}" as="row" hint-placeholder-count="5">
+                <tr style="{{ row.rowStyle }}">
+                  <td style="padding:8px 12px;">{{ row.mineral }}</td>
+                  <td style="padding:8px 12px;">{{ row.dependency }}%</td>
+                  <td style="padding:8px 12px;">{{ row.before }}%</td>
+                  <td style="padding:8px 12px;">{{ row.after }}%</td>
+                  <td style="padding:8px 12px;">{{ row.change }}%</td>
+                  <td style="padding:8px 12px;"><span style="{{ row.riskBadgeStyle }}">{{ row.riskLabel }}</span></td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="background:#FFFFFF;border:1px solid #DDDDDD;">
+          <div style="padding:14px 20px;border-bottom:1px solid #F1F2F3;font-size:14px;font-weight:700;border-left:4px solid #1B2556;padding-left:20px;">공급망 파급 경로</div>
+          <div style="padding:24px 20px;display:flex;align-items:center;justify-content:space-between;">
+            <sc-for list="{{ pathwayNodes }}" as="node" hint-placeholder-count="5">
+              <div style="display:flex;align-items:center;flex:1;">
+                <div style="{{ node.style }}">{{ node.label }}</div>
+                <sc-if value="{{ node.hasArrow }}" hint-placeholder-val="{{ true }}">
+                  <div style="flex:1;height:2px;background:#CCCCCC;margin:0 6px;"></div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div style="width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:16px;">
+        <div style="background:#FFFFFF;border:1px solid #DDDDDD;border-left:4px solid {{ riskAlert.color }};padding:16px;">
+          <div style="font-size:12px;color:#666666;margin-bottom:6px;">위험 경보</div>
+          <div style="display:inline-block;background:{{ riskAlert.color }};color:#FFFFFF;font-size:13px;font-weight:700;padding:6px 12px;">{{ riskAlert.label }}</div>
+        </div>
+
+        <div style="background:#FFFFFF;border:1px solid #DDDDDD;padding:16px;">
+          <div style="font-size:12px;font-weight:700;color:#1B2556;margin-bottom:12px;">권고 조치</div>
+          <sc-for list="{{ recommendations }}" as="rec" hint-placeholder-count="3">
+            <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:12px;font-size:12px;line-height:1.5;">
+              <span style="{{ rec.badgeStyle }}">{{ rec.badge }}</span>
+              <span>{{ rec.text }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="background:#FFFFFF;border:1px solid #DDDDDD;padding:16px;">
+          <div style="font-size:12px;font-weight:700;color:#1B2556;margin-bottom:10px;">비축 현황 대비</div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#666666;margin-bottom:6px;">
+            <span>현재 45일</span><span>목표 60일</span>
+          </div>
+          <div style="height:8px;background:#E5E5E5;">
+            <div style="height:8px;width:75%;background:#E67E22;"></div>
+          </div>
+        </div>
+
+        <button style="background:transparent;border:1px solid #1B2556;color:#1B2556;height:38px;font-size:13px;cursor:pointer;">시나리오로 저장</button>
+      </div>
+
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isProcurement }}" hint-placeholder-val="{{ false }}">
+    <div style="height:56px;background:#1B2556;display:flex;align-items:center;padding:0 24px;color:#FFFFFF;">
+      <div style="font-size:15px;font-weight:700;">비축·조달 의사결정 도구</div>
+    </div>
+    <div style="background:#FFFFFF;border-bottom:1px solid #DDDDDD;display:flex;padding:0 24px;gap:4px;">
+      <sc-for list="{{ procTabs }}" as="t" hint-placeholder-count="4">
+        <div onClick="{{ t.onClick }}" style="{{ t.style }}">{{ t.label }}</div>
+      </sc-for>
+    </div>
+
+    <div style="max-width:1280px;margin:0 auto;padding:24px;">
+
+      <sc-if value="{{ isProcStock }}" hint-placeholder-val="{{ true }}">
+        <div style="background:#FFFFFF;border:1px solid #DDDDDD;display:flex;padding:16px 24px;gap:32px;margin-bottom:20px;">
+          <sc-for list="{{ stockSummary }}" as="s" hint-placeholder-count="4">
+            <div>
+              <div style="font-size:11px;color:#666666;margin-bottom:4px;">{{ s.label }}</div>
+              <div style="font-size:22px;font-weight:700;color:{{ s.color }}">{{ s.value }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+          <sc-for list="{{ stockCards }}" as="m" hint-placeholder-count="5">
+            <div style="background:#FFFFFF;border:1px solid #DDDDDD;">
+              <div style="height:4px;background:{{ m.color }};"></div>
+              <div style="padding:16px 18px;">
+                <div style="font-size:16px;font-weight:700;color:#1B2556;">{{ m.name }}</div>
+                <div style="font-size:11px;color:#999999;margin-bottom:12px;">{{ m.en }}</div>
+                <div style="font-size:32px;font-weight:700;color:{{ m.riskColor }}">{{ m.currentDays }}<span style="font-size:13px;color:#999999;"> 일분</span></div>
+                <div style="height:6px;background:#E5E5E5;margin:10px 0;">
+                  <div style="height:6px;background:{{ m.riskColor }};width:{{ m.pct }}%;"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:#666666;margin-bottom:14px;">
+                  <span>목표 {{ m.targetDays }}일</span><span>현재 {{ m.currentDays }}일</span><span>갱신 {{ m.updated }}</span>
+                </div>
+                <button style="width:100%;height:30px;background:#1B2556;color:#FFFFFF;border:none;font-size:12px;cursor:pointer;">조달 요청</button>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isProcSim }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;gap:20px;align-items:flex-start;">
+          <div style="width:320px;flex-shrink:0;background:#FFFFFF;border:1px solid #DDDDDD;padding:16px 20px;">
+            <div style="font-size:14px;font-weight:700;border-left:4px solid #1B2556;padding-left:10px;margin-bottom:16px;">조달 조건 설정</div>
+
+            <div style="margin-bottom:14px;">
+              <div style="font-size:12px;font-weight:700;color:#333333;margin-bottom:6px;">① 광물 선택</div>
+              <select value="{{ simProcMineral }}" onChange="{{ onProcMineralChange }}" style="width:100%;height:34px;border:1px solid #DDDDDD;border-radius:3px;padding:0 8px;font-size:13px;">
+                <sc-for list="{{ mineralOptionsNoAll }}" as="m" hint-placeholder-count="5">
+                  <option value="{{ m.value }}">{{ m.label }}</option>
+                </sc-for>
+              </select>
+            </div>
+
+            <div style="margin-bottom:14px;">
+              <div style="font-size:12px;font-weight:700;color:#333333;margin-bottom:6px;">② 조달 수량 (톤)</div>
+              <input type="number" value="{{ procQty }}" onChange="{{ onProcQtyChange }}" style="width:100%;height:34px;border:1px solid #DDDDDD;border-radius:3px;padding:0 8px;font-size:13px;">
+            </div>
+
+            <div style="margin-bottom:14px;">
+              <div style="font-size:12px;font-weight:700;color:#333333;margin-bottom:6px;">③ 조달 방식</div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                <sc-for list="{{ procMethods }}" as="pm" hint-placeholder-count="4">
+                  <div onClick="{{ pm.onClick }}" style="{{ pm.style }}">{{ pm.label }}</div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="margin-bottom:14px;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                <div style="font-size:12px;font-weight:700;color:#333333;">④ 예산 한도</div>
+                <div style="font-size:13px;font-weight:700;color:#1B2556;">{{ procBudget }}억 원</div>
+              </div>
+              <input type="range" min="0" max="200" value="{{ procBudget }}" onChange="{{ onProcBudgetChange }}" style="width:100%;accent-color:#1B2556;">
+            </div>
+
+            <div style="margin-bottom:14px;">
+              <div style="font-size:12px;font-weight:700;color:#333333;margin-bottom:6px;">⑤ 납기 요건</div>
+              <select value="{{ procDeadline }}" onChange="{{ onProcDeadlineChange }}" style="width:100%;height:34px;border:1px solid #DDDDDD;border-radius:3px;padding:0 8px;font-size:13px;">
+                <option value="15">15일 이내</option>
+                <option value="30">30일 이내</option>
+                <option value="60">60일 이내</option>
+                <option value="90">90일 이내</option>
+              </select>
+            </div>
+
+            <div style="margin-bottom:20px;">
+              <div style="font-size:12px;font-weight:700;color:#333333;margin-bottom:6px;">⑥ 리스크 허용 수준</div>
+              <div style="display:flex;gap:4px;">
+                <sc-for list="{{ riskLevels }}" as="rl" hint-placeholder-count="3">
+                  <div onClick="{{ rl.onClick }}" style="{{ rl.style }}">{{ rl.label }}</div>
+                </sc-for>
+              </div>
+            </div>
+
+            <button style="width:100%;height:44px;background:#1B2556;color:#FFFFFF;font-weight:700;font-size:14px;border:none;cursor:pointer;">조달 시뮬레이션 실행</button>
+          </div>
+
+          <div style="flex:1;min-width:0;">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px;">
+              <sc-for list="{{ procOptions }}" as="o" hint-placeholder-count="3">
+                <div style="background:#FFFFFF;border:1px solid #DDDDDD;">
+                  <div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;background:{{ o.headerBg }};color:{{ o.headerColor }};">
+                    <div style="font-size:13px;font-weight:700;">{{ o.name }}</div>
+                    <sc-if value="{{ o.top }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size:10px;background:#FFFFFF;color:#1B2556;padding:2px 8px;">1순위</div>
+                    </sc-if>
+                  </div>
+                  <div style="padding:14px 16px;font-size:12px;color:#333333;">
+                    <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #F1F2F3;"><span>단가</span><b>{{ o.unitPrice }}</b></div>
+                    <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #F1F2F3;"><span>총비용</span><b>{{ o.totalCost }}</b></div>
+                    <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #F1F2F3;"><span>납기</span><b>{{ o.leadTime }}</b></div>
+                    <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #F1F2F3;"><span>리스크 점수</span><b style="color:{{ o.riskColor }}">{{ o.riskScore }}</b></div>
+                    <div style="display:flex;justify-content:space-between;padding:5px 0;"><span>공급국</span><b>{{ o.supplier }}</b></div>
+                  </div>
+                  <div style="padding:0 16px 14px;">
+                    <button style="width:100%;height:32px;background:#1B2556;color:#FFFFFF;border:none;font-size:12px;cursor:pointer;">선택</button>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="background:#FFFFFF;border:1px solid #DDDDDD;margin-bottom:16px;">
+              <div style="padding:14px 20px;border-bottom:1px solid #F1F2F3;font-size:14px;font-weight:700;border-left:4px solid #1B2556;padding-left:20px;">비용-납기-리스크 비교</div>
+              <div style="padding:16px 20px;">
+                <canvas ref="{{ radarRef }}" height="130"></canvas>
+              </div>
+            </div>
+
+            <div style="background:#FFFFFF;border:1px solid #DDDDDD;">
+              <div style="padding:14px 20px;border-bottom:1px solid #F1F2F3;font-size:14px;font-weight:700;border-left:4px solid #1B2556;padding-left:20px;">공급국 다변화 지수 (HHI, 낮을수록 양호)</div>
+              <div style="padding:20px;">
+                <sc-for list="{{ hhiRows }}" as="h" hint-placeholder-count="3">
+                  <div style="margin-bottom:14px;">
+                    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span>{{ h.name }}</span><b>{{ h.value }}</b></div>
+                    <div style="position:relative;height:10px;background:#F1F2F3;">
+                      <div style="height:10px;background:{{ h.color }};width:{{ h.pct }}%;"></div>
+                      <div style="position:absolute;top:-4px;left:{{ h.refPct }}%;width:2px;height:18px;background:#C0392B;border-left:2px dashed #C0392B;"></div>
+                    </div>
+                  </div>
+                </sc-for>
+                <div style="font-size:11px;color:#C0392B;text-align:right;">┊ 권고 HHI 2500 이하</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isProcMatrix }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#FFFFFF;border:1px solid #DDDDDD;padding:12px 16px;display:flex;gap:12px;margin-bottom:16px;">
+          <select value="{{ matrixMineralFilter }}" onChange="{{ onMatrixMineralFilter }}" style="height:32px;border:1px solid #DDDDDD;border-radius:3px;padding:0 8px;font-size:12px;">
+            <option value="all">광물 전체</option>
+            <sc-for list="{{ mineralOptionsNoAll }}" as="m" hint-placeholder-count="5">
+              <option value="{{ m.value }}">{{ m.label }}</option>
+            </sc-for>
+          </select>
+          <select value="{{ matrixRiskFilter }}" onChange="{{ onMatrixRiskFilter }}" style="height:32px;border:1px solid #DDDDDD;border-radius:3px;padding:0 8px;font-size:12px;">
+            <option value="all">위험도 전체</option>
+            <option value="critical">위험</option>
+            <option value="high">심각</option>
+            <option value="safe">정상</option>
+          </select>
+        </div>
+        <div style="background:#FFFFFF;border:1px solid #DDDDDD;overflow:hidden;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr style="background:#1B2556;color:#FFFFFF;">
+                <th style="padding:10px 12px;text-align:left;">광물</th>
+                <th style="padding:10px 12px;text-align:left;">현재비축</th>
+                <th style="padding:10px 12px;text-align:left;">위험도</th>
+                <th style="padding:10px 12px;text-align:left;">충격가능성</th>
+                <th style="padding:10px 12px;text-align:left;">권고조치</th>
+                <th style="padding:10px 12px;text-align:left;">담당자</th>
+                <th style="padding:10px 12px;text-align:left;">진행상태</th>
+                <th style="padding:10px 12px;text-align:left;">액션</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ matrixRows }}" as="row" hint-placeholder-count="5">
+                <tr style="{{ row.rowStyle }}">
+                  <td style="padding:10px 12px;">{{ row.mineral }}</td>
+                  <td style="padding:10px 12px;">{{ row.stockDays }}일</td>
+                  <td style="padding:10px 12px;"><span style="{{ row.riskStyle }}">{{ row.riskLabel }}</span></td>
+                  <td style="padding:10px 12px;">{{ row.shockProb }}%</td>
+                  <td style="padding:10px 12px;"><span style="{{ row.actionStyle }}">{{ row.actionLabel }}</span></td>
+                  <td style="padding:10px 12px;">{{ row.owner }}</td>
+                  <td style="padding:10px 12px;">
+                    <div style="display:flex;gap:3px;">
+                      <sc-for list="{{ row.steps }}" as="st" hint-placeholder-count="4">
+                        <div style="{{ st.style }}"></div>
+                      </sc-for>
+                    </div>
+                  </td>
+                  <td style="padding:10px 12px;white-space:nowrap;">
+                    <button style="border:1px solid #1B2556;background:transparent;color:#1B2556;font-size:11px;padding:4px 8px;cursor:pointer;margin-right:4px;">상세보기</button>
+                    <button style="border:none;background:#1B2556;color:#FFFFFF;font-size:11px;padding:4px 8px;cursor:pointer;">조달요청</button>
+                  </td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isProcHistory }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#FFFFFF;border:1px solid #DDDDDD;overflow:hidden;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr style="background:#1B2556;color:#FFFFFF;">
+                <th style="padding:10px 12px;text-align:left;">일자</th>
+                <th style="padding:10px 12px;text-align:left;">광물</th>
+                <th style="padding:10px 12px;text-align:left;">액션 유형</th>
+                <th style="padding:10px 12px;text-align:left;">수량</th>
+                <th style="padding:10px 12px;text-align:left;">담당자</th>
+                <th style="padding:10px 12px;text-align:left;">상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ historyRows }}" as="h" hint-placeholder-count="6">
+                <tr style="{{ h.rowStyle }}">
+                  <td style="padding:10px 12px;">{{ h.date }}</td>
+                  <td style="padding:10px 12px;">{{ h.mineral }}</td>
+                  <td style="padding:10px 12px;">{{ h.action }}</td>
+                  <td style="padding:10px 12px;">{{ h.qty }}톤</td>
+                  <td style="padding:10px 12px;">{{ h.owner }}</td>
+                  <td style="padding:10px 12px;"><span style="{{ h.statusStyle }}">{{ h.status }}</span></td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </sc-if>
+
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isScenario }}" hint-placeholder-val="{{ false }}">
+    <div style="height:56px;background:#1B2556;display:flex;align-items:center;padding:0 24px;color:#FFFFFF;">
+      <div style="font-size:15px;font-weight:700;">시나리오 비교 분석</div>
+    </div>
+    <div style="background:#FFFFFF;border-bottom:1px solid #DDDDDD;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;">
+      <div style="display:flex;gap:16px;">
+        <sc-for list="{{ scenarioToggles }}" as="sc" hint-placeholder-count="3">
+          <div onClick="{{ sc.onClick }}" style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+            <div style="{{ sc.boxStyle }}"></div>{{ sc.label }}
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button style="background:#1B2556;color:#FFFFFF;border:none;height:34px;padding:0 16px;font-size:12px;cursor:pointer;">비교 실행</button>
+        <button onClick="{{ exportPdf }}" style="background:transparent;border:1px solid #1B2556;color:#1B2556;height:34px;padding:0 16px;font-size:12px;cursor:pointer;">내보내기 PDF</button>
+      </div>
+    </div>
+
+    <div style="max-width:1280px;margin:0 auto;padding:24px 24px 90px;">
+
+      <div style="display:grid;grid-template-columns:{{ scenGridCols }};gap:16px;margin-bottom:20px;">
+        <sc-for list="{{ filteredScenarios }}" as="s" hint-placeholder-count="3">
+          <div style="background:{{ s.color }};color:#FFFFFF;padding:12px 16px;">
+            <div style="font-size:14px;font-weight:700;">{{ s.label }}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.85);">{{ s.shockType }} · {{ s.intensity }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:grid;grid-template-columns:{{ scenGridCols }};gap:16px;margin-bottom:24px;">
+        <sc-for list="{{ filteredScenarios }}" as="s" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ s.kpis }}" as="k" hint-placeholder-count="4">
+              <div style="background:#FFFFFF;border:1px solid #DDDDDD;padding:12px 14px;{{ k.highlightStyle }}">
+                <div style="font-size:11px;color:#666666;margin-bottom:6px;">{{ k.label }}</div>
+                <div style="font-size:22px;font-weight:700;color:{{ s.color }}">{{ k.value }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #DDDDDD;margin-bottom:24px;">
+        <div style="padding:14px 20px;border-bottom:1px solid #F1F2F3;font-size:14px;font-weight:700;border-left:4px solid #1B2556;padding-left:20px;">공급량 시계열 비교</div>
+        <div style="padding:16px 20px;"><canvas ref="{{ scenLineRef }}" height="90"></canvas></div>
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <div style="font-size:14px;font-weight:700;border-left:4px solid #1B2556;padding-left:10px;margin-bottom:12px;">광물별 위험도 히트맵</div>
+        <div style="display:grid;grid-template-columns:{{ scenGridCols }};gap:16px;">
+          <sc-for list="{{ filteredScenarios }}" as="s" hint-placeholder-count="3">
+            <div style="background:#FFFFFF;border:1px solid #DDDDDD;overflow:hidden;">
+              <sc-for list="{{ s.heatmap }}" as="h" hint-placeholder-count="5">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid #F1F2F3;font-size:12px;">
+                  <span>{{ h.mineral }}</span>
+                  <span style="{{ h.badgeStyle }}">{{ h.score }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #DDDDDD;margin-bottom:24px;">
+        <div style="padding:14px 20px;border-bottom:1px solid #F1F2F3;font-size:14px;font-weight:700;border-left:4px solid #1B2556;padding-left:20px;">비용 비교 (억 원)</div>
+        <div style="padding:16px 20px;"><canvas ref="{{ costBarRef }}" height="90"></canvas></div>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #DDDDDD;margin-bottom:24px;">
+        <div style="padding:14px 20px;border-bottom:1px solid #F1F2F3;font-size:14px;font-weight:700;border-left:4px solid #1B2556;padding-left:20px;">파레토 분석 (위험 광물 우선순위)</div>
+        <div style="padding:20px;">
+          <sc-for list="{{ paretoRows }}" as="p" hint-placeholder-count="5">
+            <div style="margin-bottom:12px;">
+              <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span>{{ p.mineral }}</span><span>{{ p.pct }}% · 누적 {{ p.cum }}%</span></div>
+              <div style="height:10px;background:#F1F2F3;"><div style="height:10px;width:{{ p.barPct }}%;background:{{ p.color }};"></div></div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <div style="font-size:14px;font-weight:700;border-left:4px solid #1B2556;padding-left:10px;margin-bottom:12px;">종합 평가 매트릭스</div>
+        <div style="display:grid;grid-template-columns:{{ scenGridCols }};gap:16px;">
+          <sc-for list="{{ filteredScenarios }}" as="s" hint-placeholder-count="3">
+            <div style="background:#FFFFFF;border:1px solid #DDDDDD;padding:12px;">
+              <canvas ref="{{ s.radarRef }}" height="160"></canvas>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:{{ scenGridCols }};gap:16px;">
+        <sc-for list="{{ filteredScenarios }}" as="s" hint-placeholder-count="3">
+          <div style="background:#E8EAEF;border-left:4px solid {{ s.color }};padding:16px;">
+            <div style="font-size:12px;font-weight:700;color:#1B2556;margin-bottom:8px;">AI 권고 요약</div>
+            <div style="font-size:12px;color:#333333;margin-bottom:10px;line-height:1.5;">{{ s.aiSummary }}</div>
+            <sc-for list="{{ s.aiActions }}" as="act" hint-placeholder-count="3">
+              <div style="font-size:11px;color:#333333;padding:3px 0;">· {{ act }}</div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+
+    </div>
+
+    <div style="position:fixed;bottom:0;left:0;right:0;background:#1B2556;padding:12px 24px;display:flex;justify-content:space-between;align-items:center;color:#FFFFFF;font-size:13px;">
+      <div style="font-weight:700;">최적 시나리오: B</div>
+      <div style="display:flex;gap:8px;">
+        <button style="background:transparent;border:1px solid #FFFFFF;color:#FFFFFF;height:34px;padding:0 16px;font-size:12px;cursor:pointer;">선택 시나리오로 실행계획 수립</button>
+        <button style="background:#FFFFFF;border:none;color:#1B2556;height:34px;padding:0 16px;font-size:12px;cursor:pointer;">보고서 생성</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isReports }}" hint-placeholder-val="{{ false }}">
+    <div style="height:56px;background:#1B2556;display:flex;align-items:center;padding:0 24px;color:#FFFFFF;">
+      <div style="font-size:15px;font-weight:700;">정책·보고서</div>
+    </div>
+
+    <div style="max-width:1280px;margin:0 auto;padding:24px;">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
+        <sc-for list="{{ reports }}" as="r" hint-placeholder-count="3">
+          <div style="background:{{ r.color }};color:#FFFFFF;padding:20px;min-height:110px;display:flex;flex-direction:column;justify-content:space-between;">
+            <div style="font-size:15px;font-weight:700;">{{ r.title }}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.85);">{{ r.desc }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="background:#FFFFFF;border:1px solid #DDDDDD;">
+        <div style="display:flex;gap:4px;padding:14px 20px;border-bottom:1px solid #F1F2F3;">
+          <sc-for list="{{ reportFilters }}" as="f" hint-placeholder-count="4">
+            <div onClick="{{ f.onClick }}" style="{{ f.style }}">{{ f.label }}</div>
+          </sc-for>
+        </div>
+        <div>
+          <sc-for list="{{ filteredReportRows }}" as="row" hint-placeholder-count="8">
+            <div style="display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid #F1F2F3;font-size:13px;">
+              <div style="width:90px;flex-shrink:0;color:#999999;font-size:11px;">{{ row.date }}</div>
+              <div style="width:90px;flex-shrink:0;"><span style="{{ row.badgeStyle }}">{{ row.category }}</span></div>
+              <div style="flex:1;">{{ row.title }}</div>
+              <button style="border:1px solid #1B2556;background:transparent;color:#1B2556;font-size:11px;padding:5px 10px;cursor:pointer;flex-shrink:0;white-space:nowrap;">다운로드</button>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="background:#1B2556;color:#FFFFFF;padding:24px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;font-size:12px;">
+    <div>
+      <div style="font-weight:700;margin-bottom:6px;">산업통상부 · K-Supply Shield</div>
+      <div style="color:#C9CEDC;">세종특별자치시 정부청사로 8 · 대표전화 044-000-0000</div>
+    </div>
+    <div style="display:flex;gap:16px;color:#C9CEDC;">
+      <a href="#">조달청</a>
+      <a href="#">KOTRA</a>
+      <a href="#">광물자원공사</a>
+      <a href="#">개인정보처리방침</a>
+    </div>
+  </div>
+
+  </sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    activePage: 'dashboard', heroTab: 'all', alertTab: 'supply', selectedCountry: null,
+    simMineral: 'all', simShockType: 'export', simIntensity: 45, simDuration: '6',
+    simCountries: { china: true, congo: true, chile: false, australia: false, philippines: false, indonesia: false, other: false },
+    simRunning: false, simRanAt: null, simFlash: false,
+    procTab: 'stock', simProcMineral: 'lithium', procQty: 500, procMethod: 'emergency',
+    procBudget: 50, procDeadline: '30', procRisk: 'medium',
+    matrixMineralFilter: 'all', matrixRiskFilter: 'all',
+    scenSelected: { A: true, B: true, C: true }, reportsFilter: 'all',
+    loggedIn: false, loginId: '', loginPw: ''
+  };
+  mapRef = React.createRef();
+  chartRef = React.createRef();
+  radarRef = React.createRef();
+  scenLineRef = React.createRef();
+  costBarRef = React.createRef();
+  scenRadarRefs = { A: React.createRef(), B: React.createRef(), C: React.createRef() };
+
+  setActivePage(p) { this.setState({ activePage: p }); }
+
+  setHeroTab(tab) {
+    this.setState({ heroTab: tab, selectedCountry: null });
+    var mode = tab === 'risk' ? 'risk' : 'all';
+    var win = this.mapRef.current && this.mapRef.current.contentWindow;
+    if (win) win.postMessage({ type: 'setMode', mode: mode }, '*');
+  }
+
+  setAlertTab(tab) { this.setState({ alertTab: tab }); }
+
+  componentDidMount() {
+    this._onMsg = (e) => {
+      if (e.data && e.data.type === 'countryClick') this.setState({ selectedCountry: e.data });
+    };
+    window.addEventListener('message', this._onMsg);
+  }
+  componentWillUnmount() {
+    window.removeEventListener('message', this._onMsg);
+    if (this.chart) this.chart.destroy();
+    if (this.radarChart) this.radarChart.destroy();
+    if (this.scenLineChart) this.scenLineChart.destroy();
+    if (this.costBarChart) this.costBarChart.destroy();
+    if (this._scenRadarCharts) Object.keys(this._scenRadarCharts).forEach((k) => this._scenRadarCharts[k].destroy());
+  }
+
+  componentDidUpdate() { this.syncChart(); this.syncRadar(); this.syncScenarioCharts(); }
+
+  toggleScenario(key) {
+    this.setState(function(s) {
+      var next = Object.assign({}, s.scenSelected);
+      next[key] = !next[key];
+      return { scenSelected: next };
+    });
+  }
+  exportPdf() { window.print(); }
+  setReportsFilter(f) { this.setState({ reportsFilter: f }); }
+  onLoginIdChange(e) { this.setState({ loginId: e.target.value }); }
+  onLoginPwChange(e) { this.setState({ loginPw: e.target.value }); }
+  doLogin() { this.setState({ loggedIn: true, activePage: 'dashboard' }); }
+
+  syncScenarioCharts() {
+    var scenarioDefs = this.scenarioDefs();
+    var self = this;
+    var selected = scenarioDefs.filter(function(s) { return self.state.scenSelected[s.key]; });
+
+    // line chart
+    if (this.scenLineRef.current && typeof Chart !== 'undefined') {
+      var months = [];
+      for (var i = 0; i <= 12; i++) months.push(i);
+      var datasets = selected.map(function(s) {
+        return {
+          label: s.label, borderColor: s.color, borderDash: s.key === 'A' ? [] : [6, 4],
+          data: months.map(function(m) { return Math.max(20, 100 - s.supplyDrop * (m < 6 ? m / 6 : 1) * (m > 8 ? 0.85 : 1)); }),
+          pointRadius: 0, fill: false, tension: 0.3
+        };
+      });
+      datasets.push({ label: '정상 공급', data: months.map(function(){return 100;}), borderColor: '#AAAAAA', borderDash: [3,3], pointRadius: 0, fill: false });
+      datasets.push({ label: '안전 임계선', data: months.map(function(){return 60;}), borderColor: '#C0392B', borderDash: [4,4], pointRadius: 0, fill: false });
+      var lineData = { labels: months.map(function(m){return m+'개월';}), datasets: datasets };
+      if (!this.scenLineChart) {
+        this.scenLineChart = new Chart(this.scenLineRef.current.getContext('2d'), {
+          type: 'line', data: lineData,
+          options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10 } } }, scales: { y: { min: 0, max: 110, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 9 } } } } }
+        });
+      } else { this.scenLineChart.data = lineData; this.scenLineChart.update(); }
+    } else if (this.scenLineChart) { this.scenLineChart.destroy(); this.scenLineChart = null; }
+
+    // cost bar chart
+    if (this.costBarRef.current && typeof Chart !== 'undefined') {
+      var cats = ['조달비용', '비축비용', '기회비용'];
+      var barData = {
+        labels: cats,
+        datasets: selected.map(function(s) {
+          return { label: s.label, backgroundColor: s.color, data: s.costs };
+        })
+      };
+      if (!this.costBarChart) {
+        this.costBarChart = new Chart(this.costBarRef.current.getContext('2d'), {
+          type: 'bar', data: barData,
+          options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 10 } } }, scales: { y: { ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 10 } } } } }
+        });
+      } else { this.costBarChart.data = barData; this.costBarChart.update(); }
+    } else if (this.costBarChart) { this.costBarChart.destroy(); this.costBarChart = null; }
+
+    // per-scenario radar charts
+    if (!this._scenRadarCharts) this._scenRadarCharts = {};
+    scenarioDefs.forEach(function(s) {
+      var ref = self.scenRadarRefs[s.key];
+      var chart = self._scenRadarCharts[s.key];
+      if (ref.current && self.state.scenSelected[s.key] && typeof Chart !== 'undefined') {
+        var data = {
+          labels: ['공급안보', '비용효율', '조달속도', '다변화', '회복력'],
+          datasets: [{ label: s.label, data: s.evalAxes, borderColor: s.color, backgroundColor: s.color + '33' }]
+        };
+        if (!chart) {
+          self._scenRadarCharts[s.key] = new Chart(ref.current.getContext('2d'), {
+            type: 'radar', data: data,
+            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { r: { min: 0, max: 100, ticks: { display: false } } } }
+          });
+        } else { chart.data = data; chart.update(); }
+      } else if (chart) { chart.destroy(); delete self._scenRadarCharts[s.key]; }
+    });
+  }
+
+  scenarioDefs() {
+    return [
+      {
+        key: 'A', label: '시나리오 A', shockType: '중국 수출규제', intensity: '강도 62%', color: '#1B2556',
+        supplyDrop: 35, stockDays: 39, urgentQty: 4200, economicLoss: 1200,
+        heatmap: [62, 44, 30, 55, 20], costs: [450, 300, 200],
+        evalAxes: [55, 70, 60, 50, 58],
+        aiSummary: '수출쿼터 조정으로 리튬·희토류 공급이 제한되나 대체 공급처 확보 여력 존재.',
+        aiActions: ['호주·칠레向 조달 비중 확대', '희토류 비축분 조기 방출 검토', '수출쿼터 모니터링 체계 강화']
+      },
+      {
+        key: 'B', label: '시나리오 B', shockType: '물류 차단', intensity: '강도 48%', color: '#007AFF',
+        supplyDrop: 52, stockDays: 28, urgentQty: 6100, economicLoss: 2100,
+        heatmap: [40, 70, 58, 35, 45], costs: [600, 350, 500],
+        evalAxes: [45, 55, 70, 60, 50],
+        aiSummary: '항만 봉쇄로 운임이 급등하나 우회 항로 확보 시 회복 속도가 가장 빠름.',
+        aiActions: ['우회 항로·대체 운송사 사전 확보', '항만 재고 완충분 확대', '운임 파생상품 헤지 검토']
+      },
+      {
+        key: 'C', label: '시나리오 C', shockType: '복합 충격', intensity: '강도 81%', color: '#E67E22',
+        supplyDrop: 68, stockDays: 15, urgentQty: 8900, economicLoss: 3400,
+        heatmap: [85, 90, 75, 80, 60], costs: [900, 400, 1200],
+        evalAxes: [30, 35, 40, 35, 32],
+        aiSummary: '수출규제와 물류차단이 동시 발생, 전 광물 공급망에 광범위한 충격 예상.',
+        aiActions: ['전 광물 긴급 비축 방출 즉시 개시', '범정부 비상대응체계 가동', '공동 비축 협정국 긴급 협의']
+      }
+    ];
+  }
+
+  setProcTab(t) { this.setState({ procTab: t }); }
+  onProcMineralChange(e) { this.setState({ simProcMineral: e.target.value }); }
+  onProcQtyChange(e) { this.setState({ procQty: Number(e.target.value) }); }
+  setProcMethod(m) { this.setState({ procMethod: m }); }
+  onProcBudgetChange(e) { this.setState({ procBudget: Number(e.target.value) }); }
+  onProcDeadlineChange(e) { this.setState({ procDeadline: e.target.value }); }
+  setProcRisk(r) { this.setState({ procRisk: r }); }
+  onMatrixMineralFilter(e) { this.setState({ matrixMineralFilter: e.target.value }); }
+  onMatrixRiskFilter(e) { this.setState({ matrixRiskFilter: e.target.value }); }
+
+  syncRadar() {
+    if (!this.radarRef.current) {
+      if (this.radarChart) { this.radarChart.destroy(); this.radarChart = null; }
+      return;
+    }
+    if (typeof Chart === 'undefined') return;
+    var data = {
+      labels: ['비용 효율', '납기 속도', '리스크 안정성'],
+      datasets: [
+        { label: '긴급 현물', data: [55, 90, 40], borderColor: '#1B2556', backgroundColor: 'rgba(27,37,86,0.2)' },
+        { label: '장기 계약', data: [85, 45, 80], borderColor: '#007AFF', backgroundColor: 'rgba(0,122,255,0.2)' },
+        { label: '공동 비축', data: [70, 60, 70], borderColor: '#E67E22', backgroundColor: 'rgba(230,126,34,0.2)' }
+      ]
+    };
+    if (!this.radarChart) {
+      this.radarChart = new Chart(this.radarRef.current.getContext('2d'), {
+        type: 'radar', data: data,
+        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } }, scales: { r: { min: 0, max: 100, ticks: { display: false } } } }
+      });
+    } else {
+      this.radarChart.data = data;
+      this.radarChart.update();
+    }
+  }
+
+  onMineralChange(e) { this.setState({ simMineral: e.target.value }); }
+  setShockType(key) { this.setState({ simShockType: key }); }
+  onIntensityChange(e) {
+    var v = Number(e.target.value);
+    this.setState({ simIntensity: v });
+    if (v > 75) {
+      this.setState({ simFlash: true });
+      clearTimeout(this._flashTimer);
+      this._flashTimer = setTimeout(() => this.setState({ simFlash: false }), 400);
+    }
+  }
+  setDuration(key) { this.setState({ simDuration: key }); }
+  toggleCountry(key) {
+    this.setState(function(s) {
+      var next = Object.assign({}, s.simCountries);
+      next[key] = !next[key];
+      return { simCountries: next };
+    });
+  }
+  runSimulation() {
+    this.setState({ simRunning: true });
+    setTimeout(() => this.setState({ simRunning: false, simRanAt: new Date() }), 1200);
+  }
+  resetSimulation() {
+    this.setState({
+      simMineral: 'all', simShockType: 'export', simIntensity: 45, simDuration: '6',
+      simCountries: { china: true, congo: true, chile: false, australia: false, philippines: false, indonesia: false, other: false },
+      simRanAt: null, simRunning: false
+    });
+  }
+
+  buildChartData() {
+    var months = [];
+    for (var i = -3; i <= 24; i++) months.push(i);
+    var intensity = this.state.simIntensity;
+    var duration = Number(this.state.simDuration);
+    var dropAt0 = 100 - intensity;
+    var normal = months.map(function() { return 100; });
+    var shock = months.map(function(m) {
+      if (m < 0) return 100;
+      if (m === 0) return dropAt0;
+      if (m <= duration) return Math.min(100, dropAt0 + intensity * 0.05 * m);
+      var recoverMonths = m - duration;
+      return Math.min(100, dropAt0 + recoverMonths * (intensity / 10));
+    });
+    return {
+      labels: months.map(function(m) { return m + '개월'; }),
+      datasets: [
+        { label: '정상 공급선', data: normal, borderColor: '#007AFF', borderDash: [6, 4], pointRadius: 0, fill: false, tension: 0 },
+        { label: '충격 시나리오', data: shock, borderColor: '#C0392B', backgroundColor: 'rgba(192,57,43,0.1)', pointRadius: 0, fill: true, tension: 0.3 },
+        { label: '안전 기준선 (60%)', data: months.map(function() { return 60; }), borderColor: '#E67E22', borderDash: [4, 4], pointRadius: 0, fill: false }
+      ]
+    };
+  }
+
+  syncChart() {
+    if (!this.chartRef.current) {
+      if (this.chart) { this.chart.destroy(); this.chart = null; }
+      return;
+    }
+    if (typeof Chart === 'undefined') return;
+    var data = this.buildChartData();
+    if (!this.chart) {
+      this.chart = new Chart(this.chartRef.current.getContext('2d'), {
+        type: 'line',
+        data: data,
+        options: {
+          responsive: true, maintainAspectRatio: true,
+          plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } },
+          scales: {
+            y: { min: 0, max: 110, ticks: { font: { size: 10 } } },
+            x: { ticks: { font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } }
+          }
+        }
+      });
+    } else {
+      this.chart.data = data;
+      this.chart.update();
+    }
+  }
+
+  renderVals() {
+    var self = this;
+    var pages = [
+      { key: 'dashboard', label: '공급망 현황' },
+      { key: 'simulator', label: '충격 시뮬레이터' },
+      { key: 'procurement', label: '비축·조달' },
+      { key: 'scenario', label: '시나리오 비교' },
+      { key: 'reports', label: '정책·보고서' }
+    ];
+    var gnbItems = pages.map(function(it) {
+      var active = it.key === self.state.activePage;
+      return {
+        key: it.key,
+        label: it.label,
+        onClick: function() { self.setActivePage(it.key); },
+        style: active
+          ? { height: 60, display: 'flex', alignItems: 'center', padding: '0 12px', fontSize: 13, cursor: 'pointer', color: '#1B2556', fontWeight: 700, borderBottom: '3px solid #1B2556', whiteSpace: 'nowrap', flexShrink: 0 }
+          : { height: 60, display: 'flex', alignItems: 'center', padding: '0 12px', fontSize: 13, cursor: 'pointer', color: '#333333', whiteSpace: 'nowrap', flexShrink: 0 }
+      };
+    });
+
+    var heroTabDefs = [
+      { key: 'all', label: '전체 광물' },
+      { key: 'risk', label: '위험 광물만' },
+      { key: 'country', label: '국가별 보기' }
+    ];
+    var heroTabs = heroTabDefs.map(function(t) {
+      var active = t.key === self.state.heroTab;
+      return {
+        key: t.key,
+        label: t.label,
+        onClick: function() { self.setHeroTab(t.key); },
+        style: active
+          ? { padding: '6px 14px', fontSize: 12, cursor: 'pointer', background: '#1B2556', color: '#FFFFFF' }
+          : { padding: '6px 14px', fontSize: 12, cursor: 'pointer', background: '#F1F2F3', color: '#333333' }
+      };
+    });
+
+    var kpis = [
+      { label: '관리 광물 수', value: '5', unit: '종', color: '#1B2556' },
+      { label: '위험 광물', value: '1', unit: '종', color: '#C0392B' },
+      { label: '평균 비축일수', value: '45', unit: '일', color: '#1B2556' },
+      { label: '금일 조달건', value: '3', unit: '건', color: '#007AFF' },
+      { label: '활성 시나리오', value: '4', unit: '건', color: '#1B2556' },
+      { label: '공급망 점수', value: '72', unit: '/100', color: '#27AE60' }
+    ];
+
+    var alertTabDefs = [
+      { key: 'supply', label: '공급 이상' },
+      { key: 'policy', label: '정책 변동' },
+      { key: 'market', label: '시장 동향' },
+      { key: 'inbound', label: '입고 현황' }
+    ];
+    var alertTabs = alertTabDefs.map(function(t) {
+      var active = t.key === self.state.alertTab;
+      return {
+        key: t.key,
+        label: t.label,
+        onClick: function() { self.setAlertTab(t.key); },
+        style: active
+          ? { padding: '6px 14px', fontSize: 12, cursor: 'pointer', color: '#1B2556', fontWeight: 700, borderBottom: '2px solid #1B2556' }
+          : { padding: '6px 14px', fontSize: 12, cursor: 'pointer', color: '#666666' }
+      };
+    });
+
+    var alertData = {
+      supply: [
+        { time: '07-27 09:12', title: '콩고 코발트 광산 수출 통관 지연 발생', risk: '위험', color: '#C0392B' },
+        { time: '07-27 08:40', title: '칠레 리튬 항만 운임 급등', risk: '경계', color: '#E67E22' },
+        { time: '07-26 17:05', title: '중국 희토류 수출쿼터 조정 발표', risk: '경계', color: '#E67E22' },
+        { time: '07-26 14:22', title: '호주 니켈 광산 정기 점검 종료', risk: '정상', color: '#27AE60' },
+        { time: '07-26 10:15', title: '인도네시아 니켈 제련소 가동률 회복', risk: '정상', color: '#27AE60' }
+      ],
+      policy: [
+        { time: '07-27 08:00', title: '핵심광물 비축 확대 예산안 국회 통과', risk: '정보', color: '#007AFF' },
+        { time: '07-25 16:30', title: '미-중 핵심광물 관세 협상 재개', risk: '경계', color: '#E67E22' },
+        { time: '07-24 11:00', title: 'EU 배터리 규정 개정안 발표', risk: '정보', color: '#007AFF' },
+        { time: '07-23 09:40', title: '콩고, 코발트 수출세 인상 발표', risk: '위험', color: '#C0392B' },
+        { time: '07-22 15:10', title: '국내 비축 목표치 상향 조정 고시', risk: '정보', color: '#007AFF' }
+      ],
+      market: [
+        { time: '07-27 07:30', title: '코발트 현물가 3주 연속 상승', risk: '경계', color: '#E67E22' },
+        { time: '07-26 07:30', title: '리튬 가격 보합세 지속', risk: '정상', color: '#27AE60' },
+        { time: '07-25 07:30', title: '니켈 재고 지수 하락 전환', risk: '경계', color: '#E67E22' },
+        { time: '07-24 07:30', title: '희토류 가격지수 소폭 하락', risk: '정상', color: '#27AE60' },
+        { time: '07-23 07:30', title: '구리 가격 강보합', risk: '정상', color: '#27AE60' }
+      ],
+      inbound: [
+        { time: '07-27 06:00', title: '리튬 2,300톤 평택항 입고 완료', risk: '완료', color: '#27AE60' },
+        { time: '07-26 22:10', title: '니켈 1,150톤 부산항 통관 대기', risk: '대기', color: '#007AFF' },
+        { time: '07-25 13:00', title: '희토류 320톤 인천공항 입고', risk: '완료', color: '#27AE60' },
+        { time: '07-24 09:20', title: '코발트 입고 일정 2주 지연', risk: '위험', color: '#C0392B' },
+        { time: '07-23 11:40', title: '구리 4,800톤 광양항 입고 완료', risk: '완료', color: '#27AE60' }
+      ]
+    };
+
+    var reports = [
+      { title: '주간 공급망 브리핑', desc: '이번 주 5대 핵심광물 공급망 이슈 요약', color: '#1B2556' },
+      { title: '월간 광물 시장 동향', desc: '가격·물동량·재고 지수 월간 리포트', color: '#007AFF' },
+      { title: '긴급 시나리오 보고서', desc: '코발트 공급 위험 대응 시나리오 분석', color: '#C0392B' }
+    ];
+
+    var partners = ['조달청', 'KOTRA', '광물자원공사', '한국무역협회', '관세청'];
+
+    var isDashboard = this.state.activePage === 'dashboard';
+    var isSimulator = this.state.activePage === 'simulator';
+    var isProcurement = this.state.activePage === 'procurement';
+    var isScenario = this.state.activePage === 'scenario';
+    var isReports = this.state.activePage === 'reports';
+
+    var reportFilterDefs = [
+      { key: 'all', label: '전체' }, { key: '정책발표', label: '정책 발표' },
+      { key: '발간보고서', label: '발간 보고서' }, { key: '법령고시', label: '법령·고시' }
+    ];
+    var reportFilters = reportFilterDefs.map(function(f) {
+      var active = f.key === self.state.reportsFilter;
+      return {
+        key: f.key, label: f.label,
+        onClick: function() { self.setReportsFilter(f.key); },
+        style: active
+          ? { padding: '6px 14px', fontSize: 12, cursor: 'pointer', color: '#1B2556', fontWeight: 700, borderBottom: '2px solid #1B2556' }
+          : { padding: '6px 14px', fontSize: 12, cursor: 'pointer', color: '#666666' }
+      };
+    });
+    var reportCategoryColor = { '정책발표': '#007AFF', '발간보고서': '#1B2556', '법령고시': '#E67E22' };
+    var reportRowsAll = [
+      { date: '2026-07-27', category: '정책발표', title: '핵심광물 비축 확대 예산안 국회 통과' },
+      { date: '2026-07-25', category: '발간보고서', title: '주간 공급망 브리핑 (7월 4주차)' },
+      { date: '2026-07-24', category: '법령고시', title: '국내 비축 목표치 상향 조정 고시' },
+      { date: '2026-07-22', category: '발간보고서', title: '월간 광물 시장 동향 (7월호)' },
+      { date: '2026-07-20', category: '정책발표', title: '콩고 코발트 공급 위험 대응 긴급 시나리오 보고서' },
+      { date: '2026-07-18', category: '법령고시', title: '핵심광물 통관 절차 특례 고시 개정' },
+      { date: '2026-07-14', category: '정책발표', title: 'EU 배터리 규정 개정 대응 방안 발표' },
+      { date: '2026-07-08', category: '발간보고서', title: '2026년 상반기 핵심광물 공급망 백서' }
+    ];
+    var reportRows = reportRowsAll.map(function(r) {
+      return Object.assign({}, r, { badgeStyle: { background: reportCategoryColor[r.category], color: '#FFFFFF', fontSize: 10, padding: '3px 8px', borderRadius: 3 } });
+    });
+    var filteredReportRows = reportRows.filter(function(r) { return self.state.reportsFilter === 'all' || r.category === self.state.reportsFilter; });
+
+    // --- scenario comparison ---
+    var scenarioDefsAll = this.scenarioDefs();
+    var scenarioToggles = scenarioDefsAll.map(function(s) {
+      var on = self.state.scenSelected[s.key];
+      return {
+        key: s.key, label: s.label,
+        onClick: function() { self.toggleScenario(s.key); },
+        boxStyle: { width: 14, height: 14, background: on ? s.color : '#FFFFFF', border: '1px solid ' + s.color }
+      };
+    });
+    var filteredDefs = scenarioDefsAll.filter(function(s) { return self.state.scenSelected[s.key]; });
+    var worstSupplyDrop = Math.max.apply(null, filteredDefs.map(function(s){return s.supplyDrop;}));
+    var worstStockDays = Math.min.apply(null, filteredDefs.map(function(s){return s.stockDays;}));
+    var worstUrgentQty = Math.max.apply(null, filteredDefs.map(function(s){return s.urgentQty;}));
+    var worstEconLoss = Math.max.apply(null, filteredDefs.map(function(s){return s.economicLoss;}));
+    var badHighlight = 'background:rgba(192,57,43,0.1);';
+    var filteredScenarios = filteredDefs.map(function(s) {
+      var kpis = [
+        { label: '공급 감소율', value: s.supplyDrop + '%', highlightStyle: s.supplyDrop === worstSupplyDrop ? badHighlight : '' },
+        { label: '비축 여유 일수', value: s.stockDays + '일', highlightStyle: s.stockDays === worstStockDays ? badHighlight : '' },
+        { label: '긴급 조달 필요량', value: s.urgentQty.toLocaleString() + '톤', highlightStyle: s.urgentQty === worstUrgentQty ? badHighlight : '' },
+        { label: '경제적 피해 추정액', value: s.economicLoss.toLocaleString() + '억원', highlightStyle: s.economicLoss === worstEconLoss ? badHighlight : '' }
+      ];
+      var mineralNames = ['리튬', '코발트', '니켈', '희토류', '구리'];
+      var heatmap = s.heatmap.map(function(score, idx) {
+        var bg = score >= 75 ? '#C0392B' : (score >= 55 ? '#E67E22' : (score >= 35 ? '#F39C12' : '#27AE60'));
+        return { mineral: mineralNames[idx], score: score, badgeStyle: { background: bg, color: '#FFFFFF', fontSize: 11, padding: '2px 10px', borderRadius: 3, fontWeight: 700 } };
+      });
+      return Object.assign({}, s, { kpis: kpis, heatmap: heatmap, radarRef: self.scenRadarRefs[s.key] });
+    });
+    var scenGridCols = 'repeat(' + Math.max(1, filteredScenarios.length) + ',1fr)';
+
+    var paretoDefs = [
+      { mineral: '코발트', pct: 32 }, { mineral: '리튬', pct: 24 }, { mineral: '희토류', pct: 20 },
+      { mineral: '니켈', pct: 14 }, { mineral: '구리', pct: 10 }
+    ];
+    var cum = 0;
+    var paretoRows = paretoDefs.map(function(p) {
+      cum += p.pct;
+      return { mineral: p.mineral, pct: p.pct, cum: cum, barPct: p.pct * 3, color: cum <= 80 ? '#1B2556' : '#007AFF' };
+    });
+
+    // --- procurement page ---
+    var procTabDefs = [
+      { key: 'stock', label: '비축 현황' }, { key: 'sim', label: '조달 시뮬레이션' },
+      { key: 'matrix', label: '의사결정 매트릭스' }, { key: 'history', label: '이력 관리' }
+    ];
+    var procTabs = procTabDefs.map(function(t) {
+      var active = t.key === self.state.procTab;
+      return {
+        key: t.key, label: t.label,
+        onClick: function() { self.setProcTab(t.key); },
+        style: active
+          ? { padding: '12px 16px', fontSize: 13, cursor: 'pointer', color: '#1B2556', fontWeight: 700, borderBottom: '3px solid #1B2556' }
+          : { padding: '12px 16px', fontSize: 13, cursor: 'pointer', color: '#666666' }
+      };
+    });
+
+    var mineralOptionsNoAll = [
+      { value: 'lithium', label: '리튬' }, { value: 'cobalt', label: '코발트' }, { value: 'nickel', label: '니켈' },
+      { value: 'rare-earth', label: '희토류' }, { value: 'copper', label: '구리' }
+    ];
+
+    var stockDefs = [
+      { key: 'lithium', name: '리튬', en: 'Lithium', color: '#1B2556', currentDays: 38, targetDays: 60, updated: '07-27' },
+      { key: 'cobalt', name: '코발트', en: 'Cobalt', color: '#2E4DA3', currentDays: 18, targetDays: 60, updated: '07-27' },
+      { key: 'nickel', name: '니켈', en: 'Nickel', color: '#007AFF', currentDays: 52, targetDays: 60, updated: '07-26' },
+      { key: 'rare-earth', name: '희토류', en: 'Rare Earth', color: '#8E44AD', currentDays: 44, targetDays: 60, updated: '07-26' },
+      { key: 'copper', name: '구리', en: 'Copper', color: '#E67E22', currentDays: 61, targetDays: 60, updated: '07-25' }
+    ];
+    var stockCards = stockDefs.map(function(m) {
+      var pct = Math.round(m.currentDays / m.targetDays * 100);
+      var riskColor = pct < 50 ? '#C0392B' : (pct < 80 ? '#E67E22' : '#27AE60');
+      return Object.assign({}, m, { pct: Math.min(100, pct), riskColor: riskColor });
+    });
+    var criticalCount = stockCards.filter(function(c){ return c.riskColor === '#C0392B'; }).length;
+    var warnCount = stockCards.filter(function(c){ return c.riskColor === '#E67E22'; }).length;
+    var safeCount = stockCards.filter(function(c){ return c.riskColor === '#27AE60'; }).length;
+    var stockSummary = [
+      { label: '총 관리 광물 수', value: stockCards.length + '종', color: '#1B2556' },
+      { label: '위험 광물', value: criticalCount + '종', color: '#C0392B' },
+      { label: '경계 광물', value: warnCount + '종', color: '#E67E22' },
+      { label: '정상', value: safeCount + '종', color: '#27AE60' }
+    ];
+
+    var procMethodDefs = [
+      { key: 'emergency', label: '긴급 현물' }, { key: 'longterm', label: '장기 계약' },
+      { key: 'futures', label: '선물 계약' }, { key: 'pooled', label: '공동 비축' }
+    ];
+    var procMethods = procMethodDefs.map(function(pm) {
+      var active = pm.key === self.state.procMethod;
+      return {
+        key: pm.key, label: pm.label,
+        onClick: function() { self.setProcMethod(pm.key); },
+        style: active
+          ? { padding: '6px 12px', fontSize: 12, background: '#1B2556', color: '#FFFFFF', cursor: 'pointer' }
+          : { padding: '6px 12px', fontSize: 12, background: '#F1F2F3', color: '#333333', cursor: 'pointer' }
+      };
+    });
+
+    var riskLevelDefs = [{ key: 'low', label: 'Low' }, { key: 'medium', label: 'Medium' }, { key: 'high', label: 'High' }];
+    var riskLevels = riskLevelDefs.map(function(rl) {
+      var active = rl.key === self.state.procRisk;
+      return {
+        key: rl.key, label: rl.label,
+        onClick: function() { self.setProcRisk(rl.key); },
+        style: active
+          ? { flex: 1, textAlign: 'center', padding: '8px', fontSize: 12, background: '#1B2556', color: '#FFFFFF', cursor: 'pointer' }
+          : { flex: 1, textAlign: 'center', padding: '8px', fontSize: 12, background: '#F1F2F3', color: '#333333', cursor: 'pointer' }
+      };
+    });
+
+    var procOptions = [
+      { name: '긴급 현물 조달', top: true, headerBg: '#1B2556', headerColor: '#FFFFFF', unitPrice: '₩142/kg', totalCost: '71억 원', leadTime: '7일', riskScore: '62', riskColor: '#E67E22', supplier: '호주' },
+      { name: '장기 계약 조달', top: false, headerBg: '#F1F2F3', headerColor: '#1B2556', unitPrice: '₩118/kg', totalCost: '59억 원', leadTime: '45일', riskScore: '28', riskColor: '#27AE60', supplier: '칠레' },
+      { name: '공동 비축 조달', top: false, headerBg: '#F1F2F3', headerColor: '#1B2556', unitPrice: '₩126/kg', totalCost: '63억 원', leadTime: '21일', riskScore: '41', riskColor: '#F39C12', supplier: '필리핀' }
+    ];
+
+    var hhiRows = [
+      { name: '긴급 현물', value: 3120, color: '#C0392B', pct: 62, refPct: 50 },
+      { name: '장기 계약', value: 2180, color: '#27AE60', pct: 44, refPct: 50 },
+      { name: '공동 비축', value: 2640, color: '#E67E22', pct: 53, refPct: 50 }
+    ];
+
+    var actionDefs = { urgent: { label: '긴급조달', bg: '#C0392B' }, monitor: { label: '모니터링', bg: '#007AFF' }, keep: { label: '유지', bg: '#27AE60' } };
+    var matrixDefs = [
+      { mineral: '코발트', stockDays: 18, risk: 'critical', shockProb: 78, action: 'urgent', owner: '김민준', step: 1 },
+      { mineral: '리튬', stockDays: 38, risk: 'high', shockProb: 54, action: 'monitor', owner: '이서연', step: 2 },
+      { mineral: '희토류', stockDays: 44, risk: 'high', shockProb: 48, action: 'monitor', owner: '박도윤', step: 2 },
+      { mineral: '니켈', stockDays: 52, risk: 'safe', shockProb: 22, action: 'keep', owner: '최지우', step: 3 },
+      { mineral: '구리', stockDays: 61, risk: 'safe', shockProb: 15, action: 'keep', owner: '정하은', step: 4 }
+    ];
+    var stepLabels = ['검토중', '승인', '발주', '입고'];
+    var matrixRows = matrixDefs
+      .filter(function(r) { return self.state.matrixMineralFilter === 'all' || mineralOptionsNoAll.filter(function(m){return m.label===r.mineral;})[0].value === self.state.matrixMineralFilter; })
+      .filter(function(r) { return self.state.matrixRiskFilter === 'all' || r.risk === self.state.matrixRiskFilter; })
+      .map(function(r) {
+        var riskLabel = r.risk === 'critical' ? '위험' : (r.risk === 'high' ? '심각' : '정상');
+        var riskBg = r.risk === 'critical' ? '#C0392B' : (r.risk === 'high' ? '#E67E22' : '#27AE60');
+        var act = actionDefs[r.action];
+        var steps = stepLabels.map(function(_, idx) {
+          return { style: { width: 22, height: 6, background: idx < r.step ? '#1B2556' : '#E5E5E5' } };
+        });
+        return {
+          mineral: r.mineral, stockDays: r.stockDays, riskLabel: riskLabel,
+          riskStyle: { background: riskBg, color: '#FFFFFF', fontSize: 10, padding: '3px 8px', borderRadius: 3 },
+          shockProb: r.shockProb, actionLabel: act.label,
+          actionStyle: { background: act.bg, color: '#FFFFFF', fontSize: 10, padding: '3px 8px', borderRadius: 3 },
+          owner: r.owner, steps: steps,
+          rowStyle: r.risk === 'critical' ? { background: 'rgba(192,57,43,0.08)' } : (r.risk === 'high' ? { background: 'rgba(230,126,34,0.08)' } : { background: '#FFFFFF' })
+        };
+      });
+
+    var historyDefs = [
+      { date: '2026-07-25', mineral: '리튬', action: '조달 발주', qty: 800, owner: '이서연', status: '완료' },
+      { date: '2026-07-22', mineral: '코발트', action: '긴급 조달', qty: 300, owner: '김민준', status: '진행중' },
+      { date: '2026-07-18', mineral: '니켈', action: '입고', qty: 1200, owner: '최지우', status: '완료' },
+      { date: '2026-07-14', mineral: '희토류', action: '장기 계약 체결', qty: 500, owner: '박도윤', status: '완료' },
+      { date: '2026-07-09', mineral: '구리', action: '입고', qty: 2000, owner: '정하은', status: '완료' },
+      { date: '2026-07-03', mineral: '코발트', action: '조달 발주', qty: 400, owner: '김민준', status: '지연' }
+    ];
+    var historyStatusColor = { '완료': '#27AE60', '진행중': '#007AFF', '지연': '#C0392B' };
+    var historyRows = historyDefs.map(function(h, idx) {
+      return {
+        date: h.date, mineral: h.mineral, action: h.action, qty: h.qty.toLocaleString(), owner: h.owner, status: h.status,
+        statusStyle: { background: historyStatusColor[h.status], color: '#FFFFFF', fontSize: 10, padding: '3px 8px', borderRadius: 3 },
+        rowStyle: idx % 2 === 1 ? { background: '#F8F9FA' } : {}
+      };
+    });
+
+    // --- simulator computations ---
+    var mineralOptions = [
+      { value: 'all', label: '전체' }, { value: 'lithium', label: '리튬' }, { value: 'cobalt', label: '코발트' },
+      { value: 'nickel', label: '니켈' }, { value: 'rare-earth', label: '희토류' }, { value: 'copper', label: '구리' }
+    ];
+    var simMineralLabel = (mineralOptions.filter(function(m){ return m.value === self.state.simMineral; })[0] || {}).label;
+
+    var shockTypeDefs = [
+      { key: 'export', label: '수출 규제 (중국/콩고 등 주요국)' },
+      { key: 'logistics', label: '물류 차단 (항만 봉쇄, 운임 급등)' },
+      { key: 'disaster', label: '자연재해 (광산 사고, 기후)' },
+      { key: 'geopolitical', label: '지정학적 분쟁' },
+      { key: 'compound', label: '복합 충격' }
+    ];
+    var shockTypes = shockTypeDefs.map(function(s) {
+      var active = s.key === self.state.simShockType;
+      return {
+        key: s.key, label: s.label,
+        onClick: function() { self.setShockType(s.key); },
+        dotStyle: active
+          ? { width: 12, height: 12, borderRadius: '50%', background: '#1B2556' }
+          : { width: 12, height: 12, borderRadius: '50%', border: '1px solid #CCCCCC' }
+      };
+    });
+
+    var intensity = this.state.simIntensity;
+    var intensityLabel, intensityColor;
+    if (intensity > 75) { intensityLabel = '위험'; intensityColor = '#C0392B'; }
+    else if (intensity > 50) { intensityLabel = '심각'; intensityColor = '#E67E22'; }
+    else if (intensity > 25) { intensityLabel = '주의'; intensityColor = '#F39C12'; }
+    else { intensityLabel = '경계'; intensityColor = '#1B2556'; }
+
+    var durationDefs = ['1', '3', '6', '12', '24'];
+    var durations = durationDefs.map(function(d) {
+      var active = d === self.state.simDuration;
+      return {
+        key: d, label: d + '개월',
+        onClick: function() { self.setDuration(d); },
+        style: active
+          ? { padding: '6px 12px', fontSize: 12, background: '#1B2556', color: '#FFFFFF', cursor: 'pointer' }
+          : { padding: '6px 12px', fontSize: 12, background: '#F1F2F3', color: '#333333', cursor: 'pointer' }
+      };
+    });
+
+    var countryDefs = [
+      { key: 'china', label: '중국' }, { key: 'congo', label: '콩고' }, { key: 'chile', label: '칠레' },
+      { key: 'australia', label: '호주' }, { key: 'philippines', label: '필리핀' },
+      { key: 'indonesia', label: '인도네시아' }, { key: 'other', label: '기타' }
+    ];
+    var countryChecks = countryDefs.map(function(c) {
+      var checked = !!self.state.simCountries[c.key];
+      return {
+        key: c.key, label: c.label,
+        onClick: function() { self.toggleCountry(c.key); },
+        checkMark: checked ? '✓' : '',
+        boxStyle: checked
+          ? { width: 14, height: 14, background: '#1B2556', color: '#FFFFFF', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }
+          : { width: 14, height: 14, border: '1px solid #CCCCCC' }
+      };
+    });
+
+    var stockDays = Math.max(10, Math.round(90 - intensity * 0.5));
+    var stockColor = stockDays < 40 ? '#C0392B' : (stockDays < 60 ? '#E67E22' : '#27AE60');
+    var simKpis = [
+      { label: '예상 공급 충격률', value: intensity, unit: '%', color: '#C0392B' },
+      { label: '영향 기간', value: this.state.simDuration, unit: '개월', color: '#1B2556' },
+      { label: '국내 비축 여유', value: stockDays, unit: '일분', color: stockColor },
+      { label: '긴급 조달 필요량', value: (intensity * 120).toLocaleString(), unit: '톤', color: '#1B2556' }
+    ];
+
+    var mineralRows = [
+      { mineral: '리튬', dependency: 88, weight: 0.9 },
+      { mineral: '코발트', dependency: 96, weight: 1.1 },
+      { mineral: '니켈', dependency: 72, weight: 0.8 },
+      { mineral: '희토류', dependency: 91, weight: 1.0 },
+      { mineral: '구리', dependency: 65, weight: 0.7 }
+    ];
+    var heatmapRows = mineralRows.map(function(m, idx) {
+      var before = 100;
+      var after = Math.max(0, Math.round(100 - intensity * m.weight));
+      var change = after - before;
+      var riskLabel, riskBg;
+      if (after < 40) { riskLabel = '위험'; riskBg = '#C0392B'; }
+      else if (after < 60) { riskLabel = '심각'; riskBg = '#E67E22'; }
+      else if (after < 80) { riskLabel = '주의'; riskBg = '#F39C12'; }
+      else { riskLabel = '안전'; riskBg = '#27AE60'; }
+      return {
+        mineral: m.mineral, dependency: m.dependency, before: before, after: after, change: change,
+        riskLabel: riskLabel,
+        riskBadgeStyle: { background: riskBg, color: '#FFFFFF', fontSize: 10, padding: '3px 8px', borderRadius: 3 },
+        rowStyle: idx % 2 === 1 ? { background: '#F8F9FA' } : {}
+      };
+    });
+
+    var pathwayDefs = ['원산지', '항만', '중간재', '국내 산업', '최종재'];
+    var pathwayNodes = pathwayDefs.map(function(label, idx) {
+      var shocked = idx === 0 && intensity > 50;
+      return {
+        label: label, hasArrow: idx < pathwayDefs.length - 1,
+        style: shocked
+          ? { padding: '10px 16px', fontSize: 12, color: '#FFFFFF', background: '#1B2556', border: '2px solid #C0392B', whiteSpace: 'nowrap' }
+          : { padding: '10px 16px', fontSize: 12, color: '#FFFFFF', background: '#1B2556', whiteSpace: 'nowrap' }
+      };
+    });
+
+    var riskAlert;
+    if (intensity > 75) riskAlert = { color: '#C0392B', label: '즉각 조치 필요' };
+    else if (intensity > 50) riskAlert = { color: '#E67E22', label: '모니터링 강화' };
+    else riskAlert = { color: '#27AE60', label: '정상' };
+
+    var recommendations = [
+      { badge: '긴급', text: '콩고 코발트 대체 공급처(호주·필리핀) 긴급 협의 개시', badgeStyle: { background: '#C0392B', color: '#FFFFFF', fontSize: 10, padding: '2px 6px', borderRadius: 3, flexShrink: 0 } },
+      { badge: '권고', text: '국내 비축분 조기 방출 검토 및 방출 규모 산정', badgeStyle: { background: '#007AFF', color: '#FFFFFF', fontSize: 10, padding: '2px 6px', borderRadius: 3, flexShrink: 0 } },
+      { badge: '권고', text: '장기 계약 물량 비중 확대로 가격 변동성 완화', badgeStyle: { background: '#007AFF', color: '#FFFFFF', fontSize: 10, padding: '2px 6px', borderRadius: 3, flexShrink: 0 } }
+    ];
+
+    return {
+      gnbItems: gnbItems,
+      isDashboard: isDashboard,
+      isSimulator: isSimulator,
+      isProcurement: isProcurement,
+      isScenario: isScenario,
+      isReports: isReports,
+      showPlaceholder: !isDashboard && !isSimulator && !isProcurement && !isScenario && !isReports,
+      placeholderLabel: (pages.filter(function(p){ return p.key === self.state.activePage; })[0] || {}).label,
+      heroTabs: heroTabs,
+      mapRef: this.mapRef,
+      selectedCountry: this.state.selectedCountry,
+      noSelection: !this.state.selectedCountry,
+      kpis: kpis,
+      alertTabs: alertTabs,
+      currentAlerts: alertData[this.state.alertTab],
+      reports: reports,
+      partners: partners,
+
+      simHeaderBg: this.state.simFlash ? '#C0392B' : '#1B2556',
+      simLastRunLabel: this.state.simRanAt ? ('마지막 실행: ' + this.state.simRanAt.toLocaleTimeString('ko-KR')) : '아직 실행되지 않음',
+      resetSimulation: function() { self.resetSimulation(); },
+      mineralOptions: mineralOptions,
+      simMineral: this.state.simMineral,
+      simMineralLabel: simMineralLabel,
+      onMineralChange: function(e) { self.onMineralChange(e); },
+      shockTypes: shockTypes,
+      simIntensity: intensity,
+      simIntensityLabel: intensityLabel,
+      simIntensityColor: intensityColor,
+      onIntensityChange: function(e) { self.onIntensityChange(e); },
+      durations: durations,
+      countryChecks: countryChecks,
+      runButtonLabel: this.state.simRunning ? '분석 중...' : '▶ 시뮬레이션 실행',
+      runSimulation: function() { self.runSimulation(); },
+      simKpis: simKpis,
+      chartRef: this.chartRef,
+      heatmapRows: heatmapRows,
+      pathwayNodes: pathwayNodes,
+      riskAlert: riskAlert,
+      recommendations: recommendations,
+
+      procTabs: procTabs,
+      isProcStock: this.state.procTab === 'stock',
+      isProcSim: this.state.procTab === 'sim',
+      isProcMatrix: this.state.procTab === 'matrix',
+      isProcHistory: this.state.procTab === 'history',
+      stockSummary: stockSummary,
+      stockCards: stockCards,
+      mineralOptionsNoAll: mineralOptionsNoAll,
+      simProcMineral: this.state.simProcMineral,
+      onProcMineralChange: function(e) { self.onProcMineralChange(e); },
+      procQty: this.state.procQty,
+      onProcQtyChange: function(e) { self.onProcQtyChange(e); },
+      procMethods: procMethods,
+      procBudget: this.state.procBudget,
+      onProcBudgetChange: function(e) { self.onProcBudgetChange(e); },
+      procDeadline: this.state.procDeadline,
+      onProcDeadlineChange: function(e) { self.onProcDeadlineChange(e); },
+      riskLevels: riskLevels,
+      procOptions: procOptions,
+      radarRef: this.radarRef,
+      hhiRows: hhiRows,
+      matrixMineralFilter: this.state.matrixMineralFilter,
+      onMatrixMineralFilter: function(e) { self.onMatrixMineralFilter(e); },
+      matrixRiskFilter: this.state.matrixRiskFilter,
+      onMatrixRiskFilter: function(e) { self.onMatrixRiskFilter(e); },
+      matrixRows: matrixRows,
+      historyRows: historyRows,
+
+      scenarioToggles: scenarioToggles,
+      filteredScenarios: filteredScenarios,
+      scenGridCols: scenGridCols,
+      scenLineRef: this.scenLineRef,
+      costBarRef: this.costBarRef,
+      paretoRows: paretoRows,
+      exportPdf: function() { self.exportPdf(); },
+
+      reportFilters: reportFilters,
+      filteredReportRows: filteredReportRows,
+
+      loggedIn: this.state.loggedIn,
+      notLoggedIn: !this.state.loggedIn,
+      loginId: this.state.loginId,
+      loginPw: this.state.loginPw,
+      onLoginIdChange: function(e) { self.onLoginIdChange(e); },
+      onLoginPwChange: function(e) { self.onLoginPwChange(e); },
+      doLogin: function() { self.doLogin(); }
+    };
+  }
+}
+
+</script>
+</body>
+</html>

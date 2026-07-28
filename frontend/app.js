@@ -48,9 +48,12 @@ const state = {
   importTrillion: 0, // 사이드바 표시 단위: 조원
   komis: [],
   comtrade: [], // UN Comtrade 對중국 수입 세부내역 (리포트 별첨 전용)
+  alerts: [], // data/alerts.csv 직접 편집 관리 (프로토타입) — 추후 실 API 연동
+  publications: [], // data/publications.csv 직접 편집 관리
+  reportTeasers: [], // data/report_teasers.csv 직접 편집 관리
   ddayIdx: 2, // 0=D+7, 1=D+18, 2=D+40
   simResult: null,
-  activeView: "landing",
+  activeView: "dashboard",
   compareChecked: new Set(),
   comparePct: 50,
   stockDays: 45,
@@ -60,7 +63,66 @@ const state = {
   targetDays: 45,
   stockpileResult: null,
   industryExpanded: false, // 모바일: 산업별 파급 손실 목록 전체 펼침 여부
+
+  // 충격 시뮬레이터 좌측 패널 — ②충격유형/④지속기간/⑤대상국가 (분류·기록용, 레온티에프 계산에는 영향 없음)
+  simShockType: "export",
+  simDuration: "6",
+  simCountries: { china: true, congo: true, chile: false, australia: false, philippines: false, indonesia: false, other: false },
+  simRunning: false,
+  simRanAt: null,
+
+  // 비축·조달 탭 상태
+  procTab: "stock",
+  procMineral: null,
+  procQty: 0,
+  procMethod: "emergency",
+  procBudget: 50,
+  procDeadline: "30",
+  procRisk: "medium",
+  matrixMineralFilter: "all",
+  matrixRiskFilter: "all",
+  matrixData: null,
+
+  // 시나리오 비교 (A/B/C)
+  scenSelected: { A: true, B: true, C: true },
+  scenarioResults: null,
 };
+
+const SCENARIO_DEFS = [
+  { key: "A", label: "시나리오 A", mineralKey: "희토류 (Rare Earths)", pct: 70, color: "#1B2556", shockLabel: "중국 희토류 수출통제" },
+  { key: "B", label: "시나리오 B", mineralKey: "니켈 (Nickel)", pct: 50, color: "#007AFF", shockLabel: "인도네시아 물류 리스크" },
+  { key: "C", label: "시나리오 C", mineralKey: "코발트 (Cobalt)", pct: 80, color: "#E67E22", shockLabel: "DRC 코발트 공급 중단" },
+];
+
+const PROC_METHODS = [
+  { key: "emergency", label: "긴급 현물" }, { key: "longterm", label: "장기 계약" },
+  { key: "futures", label: "선물 계약" }, { key: "pooled", label: "공동 비축" },
+];
+const PROC_RISK_LEVELS = [{ key: "low", label: "Low" }, { key: "medium", label: "Medium" }, { key: "high", label: "High" }];
+const MATRIX_OWNERS = ["김민준", "이서연", "박도윤", "최지우", "정하은", "한서준", "오하윤"]; // MOCK — 실제 담당자 배정 시스템 부재로 임시 배정
+const MOCK_PROC_HISTORY = [
+  { date: "2026-07-25", mineral: "리튬 (Lithium)", action: "조달 발주", qty: 800, owner: "이서연", status: "완료" },
+  { date: "2026-07-22", mineral: "코발트 (Cobalt)", action: "긴급 조달", qty: 300, owner: "김민준", status: "진행중" },
+  { date: "2026-07-18", mineral: "니켈 (Nickel)", action: "입고", qty: 1200, owner: "최지우", status: "완료" },
+  { date: "2026-07-14", mineral: "희토류 (Rare Earths)", action: "장기 계약 체결", qty: 500, owner: "박도윤", status: "완료" },
+  { date: "2026-07-09", mineral: "흑연 (Graphite)", action: "입고", qty: 2000, owner: "정하은", status: "완료" },
+  { date: "2026-07-03", mineral: "코발트 (Cobalt)", action: "조달 발주", qty: 400, owner: "김민준", status: "지연" },
+]; // MOCK DATA — 실 조달 이력 시스템 연동 필요
+
+const SHOCK_TYPES = [
+  { key: "export", label: "수출 규제 (중국/콩고 등 주요국)" },
+  { key: "logistics", label: "물류 차단 (항만 봉쇄, 운임 급등)" },
+  { key: "disaster", label: "자연재해 (광산 사고, 기후)" },
+  { key: "geopolitical", label: "지정학적 분쟁" },
+  { key: "compound", label: "복합 충격" },
+];
+const DURATIONS = ["1", "3", "6", "12", "24"];
+const DURATION_DDAY_MAP = { "1": 0, "3": 0, "6": 1, "12": 2, "24": 2 };
+const SIM_COUNTRIES = [
+  { key: "china", label: "중국" }, { key: "congo", label: "콩고" }, { key: "chile", label: "칠레" },
+  { key: "australia", label: "호주" }, { key: "philippines", label: "필리핀" },
+  { key: "indonesia", label: "인도네시아" }, { key: "other", label: "기타" },
+];
 
 const RADAR_CATEGORIES = ["조달 속도", "비용 효율", "물량 충분성", "공급 안정성", "지속 가능성"];
 const RADAR_OPTIONS = [
@@ -92,27 +154,35 @@ function fmt(n, digits = 2) {
 function fmtPct(v) { return (v >= 0 ? "+" : "") + fmt(v, 1) + "%"; }
 
 async function init() {
-  const [minerals, komis, comtrade] = await Promise.all([
+  const [minerals, komis, comtrade, alerts, publications, reportTeasers] = await Promise.all([
     fetchJSON(`${API}/api/minerals`),
     fetchJSON(`${API}/api/komis`),
     fetchJSON(`${API}/api/comtrade`),
+    fetchJSON(`${API}/api/alerts`),
+    fetchJSON(`${API}/api/publications`),
+    fetchJSON(`${API}/api/report-teasers`),
   ]);
 
   minerals.forEach((m) => { state.minerals[m.key] = m; });
   state.komis = komis;
   state.comtrade = comtrade;
+  state.alerts = alerts;
+  state.publications = publications;
+  state.reportTeasers = reportTeasers;
 
   setupMineralDropdown(minerals);
   setupViewTabs();
   setupCompareView(minerals);
   setupReportButton();
+  setupSimulatorPanel();
 
   document.getElementById("restriction-range").addEventListener("input", (e) => {
     state.restrictionPct = Number(e.target.value);
     document.getElementById("restriction-value").textContent = `${state.restrictionPct}%`;
     e.target.setAttribute("aria-valuetext", `${state.restrictionPct}%`);
     updatePreview();
-    updateMineralChip();
+    updateIntensityLabel();
+    flashHeaderIfHigh();
     runSimulation();
     runStockpile();
     saveParams();
@@ -134,8 +204,6 @@ async function init() {
     renderDdaySelect();
   });
 
-  document.getElementById("alert-date").textContent = `기준일: ${new Date().toISOString().slice(0, 10).replace(/-/g, ".")}`;
-
   document.getElementById("industry-toggle-btn").addEventListener("click", () => {
     state.industryExpanded = !state.industryExpanded;
     if (state.simResult) renderIndustryList(state.simResult);
@@ -143,72 +211,36 @@ async function init() {
 
   setupStockpileView();
   setupLandingCarousel();
+  setupDashboard();
+  setupReportsView();
+  setupProcurementView();
+  setupScenarioView();
 
   const persisted = loadParams();
   selectMineral((persisted && state.minerals[persisted.mineralKey]) ? persisted.mineralKey : minerals[0].key);
   if (persisted) {
     state.restrictionPct = persisted.restrictionPct;
     state.importTrillion = persisted.importTrillion;
-    state.stockDays = persisted.stockDays;
-    state.dailyCons = persisted.dailyCons;
-    state.releasePct = persisted.releasePct;
-    state.importCost = persisted.importCost;
-    state.targetDays = persisted.targetDays;
     document.getElementById("restriction-range").value = state.restrictionPct;
     document.getElementById("restriction-value").textContent = `${state.restrictionPct}%`;
     document.getElementById("import-input").value = state.importTrillion;
-    document.getElementById("stock-days-range").value = state.stockDays;
-    document.getElementById("stock-days-value").textContent = `${state.stockDays}일`;
-    document.getElementById("daily-cons-input").value = state.dailyCons;
-    document.getElementById("release-pct-range").value = state.releasePct;
-    document.getElementById("release-pct-value").textContent = `${state.releasePct}%`;
-    document.getElementById("import-cost-input").value = state.importCost;
-    document.getElementById("target-days-range").value = state.targetDays;
-    document.getElementById("target-days-value").textContent = `${state.targetDays}일`;
     updatePreview();
-    updateMineralChip();
+    updateIntensityLabel();
     runSimulation();
     runStockpile();
   }
   renderKomis();
-  const initialView = PATH_VIEWS[window.location.pathname] || "landing";
+  const initialView = PATH_VIEWS[window.location.pathname] || "dashboard";
   switchView(initialView);
 }
 
 // ── ② 비축 조달 의사결정 ──────────────────────────────────
 function setupStockpileView() {
-  document.getElementById("stock-days-range").addEventListener("input", (e) => {
-    state.stockDays = Number(e.target.value);
-    document.getElementById("stock-days-value").textContent = `${state.stockDays}일`;
-    runStockpile();
-    saveParams();
-  });
-  document.getElementById("daily-cons-input").addEventListener("input", (e) => {
-    state.dailyCons = Number(e.target.value) || 0;
-    runStockpile();
-    saveParams();
-  });
-  document.getElementById("release-pct-range").addEventListener("input", (e) => {
-    state.releasePct = Number(e.target.value);
-    document.getElementById("release-pct-value").textContent = `${state.releasePct}%`;
-    runStockpile();
-    saveParams();
-  });
-  document.getElementById("import-cost-input").addEventListener("input", (e) => {
-    state.importCost = Number(e.target.value) || 0;
-    runStockpile();
-    saveParams();
-  });
-  document.getElementById("target-days-range").addEventListener("input", (e) => {
-    state.targetDays = Number(e.target.value);
-    document.getElementById("target-days-value").textContent = `${state.targetDays}일`;
-    runStockpile();
-    saveParams();
-  });
+  // 비축·조달 화면 전용 컨트롤은 setupProcurementView()에서 구성한다 (④ 비축·조달 재건축).
 }
 
 async function runStockpile() {
-  if (!state.mineralKey || state.activeView !== "stockpile") return;
+  if (!state.mineralKey) return;
   const koreaImportBn = state.importTrillion * 10000;
   const params = new URLSearchParams({
     mineral: state.mineralKey,
@@ -223,6 +255,7 @@ async function runStockpile() {
   const result = await fetchJSON(`${API}/api/stockpile?${params}`);
   state.stockpileResult = result;
   renderStockpile(result);
+  if (state.simResult) { renderSimKpiGrid(state.simResult); renderSimInsightPanel(state.simResult); }
 }
 
 function renderStockpile(s) {
@@ -233,7 +266,6 @@ function renderStockpile(s) {
   renderStockpileA(s);
   renderStockpileB(s);
   renderStockpileC(s);
-  renderStockpileD(s);
 }
 
 function renderStockpileA(s) {
@@ -327,32 +359,313 @@ function renderStockpileC(s) {
   }).join("");
 }
 
-function renderStockpileD(s) {
-  document.getElementById("radar-wrap").innerHTML = buildRadarSVG(RADAR_CATEGORIES, RADAR_OPTIONS);
+// ── ③ 비축·조달 의사결정 도구 (4탭: 비축현황 / 조달시뮬레이션 / 의사결정매트릭스 / 이력관리) ──
+function setupProcurementView() {
+  state.procMineral = Object.keys(state.minerals)[0] || null;
 
-  const optionInfo = {
-    "🏦 비축 방출": {
-      기간: "즉시 (0~2일)", 비용: "정상가 기준", 물량: `${Math.round(s.usable_stock).toLocaleString("ko-KR")} MT`,
-      장점: "즉각 투입 가능, 시장 교란 없음", 단점: "물량 소진 후 재확보 불가",
-    },
-    "✈️ 긴급 수입": {
-      기간: "7~14일 (해운 기준)", 비용: "정상가 +20~40%", 물량: "이론상 무제한",
-      장점: "중·장기 공급 지속 가능", 단점: "가격 급등, 조달 시간 소요",
-    },
-    "⚡ 복합 전략": {
-      기간: "즉시 + 14일~", 비용: "정상가 +10~15%", 물량: "비축 + 수입 병행",
-      장점: "D+7 비축 방출로 시간 확보 → 수입으로 장기 대응", 단점: "이중 관리 체계 필요",
-    },
-  };
-  document.getElementById("option-cards").innerHTML = Object.entries(optionInfo).map(([name, info]) => `
-    <div class="option-card">
-      <div class="opt-name">${name}</div>
-      <div class="opt-meta">기간: ${info.기간} | 비용: ${info.비용}<br>물량: ${info.물량}</div>
-      <div class="opt-pro">✓ ${info.장점}</div>
-      <div class="opt-con">✗ ${info.단점}</div>
+  document.getElementById("proc-tabs").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-proctab]");
+    if (!btn) return;
+    setProcTab(btn.dataset.proctab);
+  });
+
+  document.getElementById("stock-card-grid").addEventListener("click", (e) => {
+    const key = e.target.closest("[data-mineral]")?.dataset.mineral;
+    if (!key) return;
+    state.procMineral = key;
+    setProcTab("sim");
+    const sel = document.getElementById("proc-mineral-select");
+    if (sel) sel.value = key;
+    runProcSim();
+  });
+
+  setupProcSimTab();
+
+  const mineralFilter = document.getElementById("matrix-mineral-filter");
+  Object.keys(state.minerals).forEach((key) => {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = key.replace(/\s*\(.*\)/, "");
+    mineralFilter.appendChild(opt);
+  });
+  mineralFilter.addEventListener("change", (e) => { state.matrixMineralFilter = e.target.value; renderMatrixTable(); });
+  document.getElementById("matrix-risk-filter").addEventListener("change", (e) => { state.matrixRiskFilter = e.target.value; renderMatrixTable(); });
+  document.getElementById("matrix-table").addEventListener("click", (e) => {
+    const detailKey = e.target.closest("[data-detail]")?.dataset.detail;
+    const reqKey = e.target.closest("[data-request]")?.dataset.request;
+    if (detailKey) { selectMineral(detailKey); window.location.href = "/simulate"; }
+    if (reqKey) {
+      state.procMineral = reqKey;
+      setProcTab("sim");
+      const sel = document.getElementById("proc-mineral-select");
+      if (sel) sel.value = reqKey;
+      runProcSim();
+    }
+  });
+
+  renderHistoryTable();
+  setProcTab("stock");
+}
+
+function setProcTab(tab) {
+  state.procTab = tab;
+  ["stock", "sim", "matrix", "history"].forEach((t) => {
+    document.getElementById(`proc-tab-${t}`).hidden = t !== tab;
+  });
+  document.querySelectorAll("#proc-tabs button").forEach((b) => b.classList.toggle("active", b.dataset.proctab === tab));
+  if (tab === "stock" && !state._stockCardsLoaded) { state._stockCardsLoaded = true; loadStockCards(); }
+  if (tab === "sim" && !state._procSimRan) { state._procSimRan = true; runProcSim(); }
+  if (tab === "matrix" && !state.matrixData) loadMatrixData();
+}
+
+// 7개 광물 각각의 표준 가정 기반 비축 현황 카드 — 실 /api/stockpile 연동 (mock 아님)
+async function loadStockCards() {
+  const keys = Object.keys(state.minerals);
+  const results = await Promise.all(keys.map(async (key) => {
+    const m = state.minerals[key];
+    const params = new URLSearchParams({
+      mineral: key, restriction_pct: m.shock_example, korea_import_bn: m.korea_import_bn,
+      days_stock: 45, daily_cons_ton: 500, release_pct: 50, import_cost: 0.5, target_days: 60,
+    });
+    const s = await fetchJSON(`${API}/api/stockpile?${params}`);
+    return { key, m, s };
+  }));
+  renderStockCards(results);
+}
+
+function renderStockCards(results) {
+  const cards = results.map(({ key, m, s }) => {
+    const shortName = key.replace(/\s*\(.*\)/, "");
+    const currentDays = Math.max(0, Math.round(s.coverage_days));
+    const targetDays = 60;
+    const pct = Math.min(100, Math.round((currentDays / targetDays) * 100));
+    const riskColor = pct < 50 ? "var(--danger)" : pct < 80 ? "var(--warning)" : "var(--success)";
+    const accent = MINERAL_ACCENTS[key] || "var(--primary)";
+    return { key, shortName, en: m.en, accent, currentDays, targetDays, pct, riskColor };
+  });
+
+  const critical = cards.filter((c) => c.pct < 50).length;
+  const warn = cards.filter((c) => c.pct >= 50 && c.pct < 80).length;
+  const safe = cards.filter((c) => c.pct >= 80).length;
+
+  document.getElementById("stock-summary").innerHTML = [
+    ["총 관리 광물 수", `${cards.length}종`, "var(--primary)"],
+    ["위험 광물", `${critical}종`, "var(--danger)"],
+    ["경계 광물", `${warn}종`, "var(--warning)"],
+    ["정상", `${safe}종`, "var(--success)"],
+  ].map(([label, val, color]) => `
+    <div class="stock-summary-item"><div class="stat-label">${label}</div><div class="stat-value" style="color:${color}">${val}</div></div>`).join("");
+
+  document.getElementById("stock-card-grid").innerHTML = cards.map((c) => `
+    <div class="stock-card">
+      <div class="stock-card-bar" style="background:${c.accent}"></div>
+      <div class="stock-card-body">
+        <div class="stock-card-name">${c.shortName}</div>
+        <div class="stock-card-en">${c.en}</div>
+        <div class="stock-card-big" style="color:${c.riskColor}">${c.currentDays}<span class="unit"> 일분</span></div>
+        <div class="stock-card-progress"><div class="stock-card-progress-fill" style="width:${c.pct}%;background:${c.riskColor}"></div></div>
+        <div class="stock-card-meta"><span>목표 ${c.targetDays}일</span><span>현재 ${c.currentDays}일</span></div>
+        <button type="button" class="stock-card-btn" data-mineral="${c.key}">조달 요청</button>
+      </div>
     </div>`).join("");
+}
 
-  document.getElementById("recommendation-box").innerHTML = `💡 <b>권고 전략:</b> ${s.recommendation.text}`;
+function setupProcSimTab() {
+  const minerals = Object.keys(state.minerals);
+  const sel = document.getElementById("proc-mineral-select");
+  sel.innerHTML = minerals.map((key) => `<option value="${key}">${key.replace(/\s*\(.*\)/, "")}</option>`).join("");
+  if (state.procMineral) sel.value = state.procMineral;
+  sel.addEventListener("change", (e) => { state.procMineral = e.target.value; runProcSim(); });
+
+  document.getElementById("proc-qty-input").addEventListener("input", (e) => {
+    state.procQty = Number(e.target.value) || 0;
+    renderProcOptionsFromState();
+  });
+
+  renderProcMethods();
+  document.getElementById("proc-method-group").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-method]");
+    if (!btn) return;
+    state.procMethod = btn.dataset.method;
+    renderProcMethods();
+  });
+
+  const budgetRange = document.getElementById("proc-budget-range");
+  budgetRange.value = state.procBudget;
+  document.getElementById("proc-budget-value").textContent = `${state.procBudget}억 원`;
+  budgetRange.addEventListener("input", (e) => {
+    state.procBudget = Number(e.target.value);
+    document.getElementById("proc-budget-value").textContent = `${state.procBudget}억 원`;
+  });
+
+  document.getElementById("proc-deadline-select").value = state.procDeadline;
+  document.getElementById("proc-deadline-select").addEventListener("change", (e) => { state.procDeadline = e.target.value; });
+
+  renderProcRiskLevels();
+  document.getElementById("proc-risk-group").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-risk]");
+    if (!btn) return;
+    state.procRisk = btn.dataset.risk;
+    renderProcRiskLevels();
+  });
+
+  document.getElementById("proc-run-btn").addEventListener("click", () => { runProcSim(); });
+}
+
+function renderProcMethods() {
+  document.getElementById("proc-method-group").innerHTML = PROC_METHODS.map((pm) => `
+    <button type="button" class="toggle-btn ${state.procMethod === pm.key ? "active" : ""}" data-method="${pm.key}">${pm.label}</button>`).join("");
+}
+function renderProcRiskLevels() {
+  document.getElementById("proc-risk-group").innerHTML = PROC_RISK_LEVELS.map((rl) => `
+    <button type="button" class="toggle-btn flex1 ${state.procRisk === rl.key ? "active" : ""}" data-risk="${rl.key}">${rl.label}</button>`).join("");
+}
+
+let state_procLastStockpile = null;
+async function runProcSim() {
+  const key = state.procMineral;
+  const m = state.minerals[key];
+  if (!m) return;
+  const params = new URLSearchParams({
+    mineral: key, restriction_pct: m.shock_example, korea_import_bn: m.korea_import_bn,
+    days_stock: 45, daily_cons_ton: 500, release_pct: 50, import_cost: 0.5, target_days: 60,
+  });
+  const s = await fetchJSON(`${API}/api/stockpile?${params}`);
+  state_procLastStockpile = s;
+  if (!state.procQty) {
+    state.procQty = Math.max(10, Math.round(s.shortage) || 100);
+    document.getElementById("proc-qty-input").value = state.procQty;
+  }
+  renderProcOptionsFromState(m);
+  renderProcRadar();
+  renderProcHHI(m);
+}
+
+function renderProcOptionsFromState(mArg) {
+  const m = mArg || state.minerals[state.procMineral];
+  if (!m) return;
+  const qty = state.procQty || 0;
+  const baseUnitCost = 0.5; // 억원/MT — 기존 앱 긴급수입 단가 기본 가정치
+  const options = [
+    { name: "긴급 현물 조달", top: true, unitPrice: baseUnitCost, leadDays: 7, riskScore: 62, supplier: m.top_producer },
+    { name: "장기 계약 조달", top: false, unitPrice: baseUnitCost * 0.83, leadDays: 45, riskScore: 28, supplier: m.top_producer },
+    { name: "공동 비축 조달", top: false, unitPrice: baseUnitCost * 0.89, leadDays: 21, riskScore: 41, supplier: m.top_producer },
+  ];
+  document.getElementById("proc-option-cards").innerHTML = options.map((o) => {
+    const totalCost = (o.unitPrice * qty).toFixed(1);
+    const riskColor = o.riskScore > 50 ? "var(--danger)" : o.riskScore > 30 ? "var(--warning)" : "var(--success)";
+    return `
+    <div class="option-card-v2">
+      <div class="option-card-v2-head" style="background:${o.top ? "var(--primary)" : "var(--bg)"};color:${o.top ? "#fff" : "var(--primary)"}">
+        <div style="font-size:13px;font-weight:700">${o.name}</div>
+        ${o.top ? '<div class="option-badge-top">1순위</div>' : ""}
+      </div>
+      <div class="option-card-v2-body">
+        <div class="option-row"><span>단가</span><b>${o.unitPrice.toFixed(2)}억원/MT</b></div>
+        <div class="option-row"><span>총비용</span><b>${totalCost}억 원</b></div>
+        <div class="option-row"><span>납기</span><b>${o.leadDays}일</b></div>
+        <div class="option-row"><span>리스크 점수</span><b style="color:${riskColor}">${o.riskScore}</b></div>
+        <div class="option-row"><span>공급국</span><b>${o.supplier}</b></div>
+      </div>
+      <div class="option-card-v2-foot"><button type="button" class="option-select-btn">선택</button></div>
+    </div>`;
+  }).join("");
+}
+
+function renderProcRadar() {
+  const cats = ["비용 효율", "납기 속도", "리스크 안정성"];
+  const opts = [
+    { name: "긴급 현물", scores: [55, 90, 38], color: "#1B2556" },
+    { name: "장기 계약", scores: [85, 45, 72], color: "#007AFF" },
+    { name: "공동 비축", scores: [70, 60, 59], color: "#E67E22" },
+  ];
+  document.getElementById("proc-radar-wrap").innerHTML = buildRadarSVG(cats, opts);
+}
+
+function renderProcHHI(m) {
+  const share = m ? m.china_mine_share : 50;
+  const rows = [
+    { name: "긴급 현물", value: Math.round(share * share + ((100 - share) * (100 - share)) / 2), color: "var(--danger)" },
+    { name: "장기 계약", value: Math.round((share * 0.6) ** 2 + ((100 - share * 0.6) ** 2) / 3), color: "var(--success)" },
+    { name: "공동 비축", value: Math.round((share * 0.8) ** 2 + ((100 - share * 0.8) ** 2) / 2.5), color: "var(--warning)" },
+  ];
+  const maxV = Math.max(...rows.map((r) => r.value), 1);
+  const refPct = Math.min(100, (2500 / maxV) * 100);
+  document.getElementById("proc-hhi-wrap").innerHTML = rows.map((r) => `
+    <div class="hhi-row">
+      <div class="hhi-row-label"><span>${r.name}</span><b>${r.value.toLocaleString("ko-KR")}</b></div>
+      <div class="hhi-track">
+        <div class="hhi-fill" style="width:${Math.min(100, (r.value / maxV) * 100)}%;background:${r.color}"></div>
+        <div class="hhi-ref-line" style="left:${refPct}%"></div>
+      </div>
+    </div>`).join("") + `<div class="hhi-note">┊ 권고 HHI 2500 이하 (${m ? m.key.replace(/\s*\(.*\)/, "") : ""} 중국 광산 점유율 ${share}% 기반 추정)</div>`;
+}
+
+// 의사결정 매트릭스: 7개 광물 전체 실계산(시뮬레이션+비축분석) 기반. 담당자/진행상태만 mock.
+async function loadMatrixData() {
+  const keys = Object.keys(state.minerals);
+  const results = await Promise.all(keys.map(async (key) => {
+    const m = state.minerals[key];
+    const simParams = new URLSearchParams({ mineral: key, restriction_pct: m.shock_example, korea_import_bn: m.korea_import_bn });
+    const r = await fetchJSON(`${API}/api/simulate?${simParams}`);
+    const stockParams = new URLSearchParams({
+      mineral: key, restriction_pct: m.shock_example, korea_import_bn: m.korea_import_bn,
+      days_stock: 45, daily_cons_ton: 500, release_pct: 50, import_cost: 0.5, target_days: 60,
+    });
+    const s = await fetchJSON(`${API}/api/stockpile?${stockParams}`);
+    return { key, m, r, s };
+  }));
+  state.matrixData = results;
+  renderMatrixTable();
+}
+
+function renderMatrixTable() {
+  if (!state.matrixData) return;
+  let rows = state.matrixData.filter(({ key }) => state.matrixMineralFilter === "all" || key === state.matrixMineralFilter);
+  rows = rows.filter(({ r }) => state.matrixRiskFilter === "all" || r.risk_level === state.matrixRiskFilter);
+  rows = [...rows].sort((a, b) => b.r.restriction_pct - a.r.restriction_pct);
+
+  const html = rows.map(({ key, r, s }, idx) => {
+    const shortName = key.replace(/\s*\(.*\)/, "");
+    const riskLabel = r.risk_level === "HIGH" ? "위험" : r.risk_level === "MEDIUM" ? "심각" : "정상";
+    const riskBg = r.risk_level === "HIGH" ? "var(--danger)" : r.risk_level === "MEDIUM" ? "var(--warning)" : "var(--success)";
+    const actionKey = s.recommendation.key; // hold/combined/import — 실계산 결과
+    const actionLabel = actionKey === "import" ? "긴급조달" : actionKey === "combined" ? "모니터링" : "유지";
+    const actionBg = actionKey === "import" ? "var(--danger)" : actionKey === "combined" ? "var(--multiplier-blue)" : "var(--success)";
+    const step = actionKey === "import" ? 1 : actionKey === "combined" ? 2 : 4; // 권고조치 기반 근사 (실 워크플로 시스템 부재)
+    const steps = [0, 1, 2, 3].map((i) => `<div class="step-seg ${i < step ? "done" : ""}"></div>`).join("");
+    const rowBg = r.risk_level === "HIGH" ? "background:rgba(192,57,43,0.08)" : r.risk_level === "MEDIUM" ? "background:rgba(230,126,34,0.08)" : "";
+    return `<tr style="${rowBg}">
+      <td>${shortName}</td>
+      <td>${Math.round(s.coverage_days)}일</td>
+      <td><span class="risk-badge" style="background:${riskBg};color:#fff">${riskLabel}</span></td>
+      <td>${r.restriction_pct}%</td>
+      <td><span class="risk-badge" style="background:${actionBg};color:#fff">${actionLabel}</span></td>
+      <td>${MATRIX_OWNERS[idx % MATRIX_OWNERS.length]}</td>
+      <td><div class="step-track">${steps}</div></td>
+      <td style="white-space:nowrap">
+        <button type="button" class="tbl-btn-ghost" data-detail="${key}">상세보기</button>
+        <button type="button" class="tbl-btn-solid" data-request="${key}">조달요청</button>
+      </td>
+    </tr>`;
+  }).join("");
+  document.getElementById("matrix-table").innerHTML = `
+    <thead><tr><th>광물</th><th>현재비축</th><th>위험도</th><th>충격가능성</th><th>권고조치</th><th>담당자</th><th>진행상태</th><th>액션</th></tr></thead>
+    <tbody>${html}</tbody>`;
+}
+
+function renderHistoryTable() {
+  const statusColor = { "완료": "var(--success)", "진행중": "var(--multiplier-blue)", "지연": "var(--danger)" };
+  const rows = MOCK_PROC_HISTORY.map((h, idx) => {
+    const shortName = h.mineral.replace(/\s*\(.*\)/, "");
+    return `<tr class="${idx % 2 === 1 ? "zebra" : ""}">
+      <td>${h.date}</td><td>${shortName}</td><td>${h.action}</td><td>${h.qty.toLocaleString("ko-KR")}톤</td><td>${h.owner}</td>
+      <td><span class="risk-badge" style="background:${statusColor[h.status]};color:#fff">${h.status}</span></td>
+    </tr>`;
+  }).join("");
+  document.getElementById("history-table").innerHTML = `
+    <thead><tr><th>일자</th><th>광물</th><th>액션 유형</th><th>수량</th><th>담당자</th><th>상태</th></tr></thead>
+    <tbody>${rows}</tbody>`;
 }
 
 function buildRadarSVG(categories, options) {
@@ -447,7 +760,6 @@ function setAccent(mineralKey) {
   const accentDark = MINERAL_ACCENTS_DARK[mineralKey] || "#082a54";
   document.documentElement.style.setProperty("--accent", accent);
   document.documentElement.style.setProperty("--accent-dark", accentDark);
-  document.getElementById("accent-dot").style.background = accent;
   const line = document.getElementById("komis-line");
   if (line) line.setAttribute("stroke", accent);
 }
@@ -473,20 +785,114 @@ function selectMineral(key) {
   document.getElementById("restriction-value").textContent = `${state.restrictionPct}%`;
   document.getElementById("import-input").value = state.importTrillion;
 
+  document.getElementById("sim-mineral-badge").textContent = shortName;
+
   setAccent(key);
   updatePreview();
-  updateMineralChip();
+  updateIntensityLabel();
   renderDdaySelect();
   runSimulation();
   runStockpile();
   saveParams();
 }
 
-// 모바일 상단바의 광물 칩("{mineral}·{pct}%") 갱신
-function updateMineralChip() {
-  if (!state.mineralKey) return;
-  const shortName = state.mineralKey.replace(/\s*\(.*\)/, "");
-  document.getElementById("mineral-chip-label").textContent = `${shortName} · ${state.restrictionPct}%`;
+function updateIntensityLabel() {
+  const v = state.restrictionPct;
+  let label, color;
+  if (v > 75) { label = "위험"; color = "var(--danger)"; }
+  else if (v > 50) { label = "심각"; color = "var(--warning)"; }
+  else if (v > 25) { label = "주의"; color = "#F39C12"; }
+  else { label = "경계"; color = "var(--primary)"; }
+  const el = document.getElementById("sim-intensity-label");
+  if (el) el.innerHTML = `<span style="color:${color}">${label}</span>`;
+}
+
+function flashHeaderIfHigh() {
+  const bar = document.getElementById("sim-header-bar");
+  if (!bar) return;
+  if (state.restrictionPct > 75) {
+    bar.classList.add("flash");
+    clearTimeout(state._flashTimer);
+    state._flashTimer = setTimeout(() => bar.classList.remove("flash"), 400);
+  }
+}
+
+// ── 충격 시뮬레이터 좌측 패널: 충격유형 라디오 / 지속기간 토글 / 대상국가 체크 ──
+function setupSimulatorPanel() {
+  renderShockTypes();
+  renderDurationGroup();
+  renderCountryChecks();
+  updateIntensityLabel();
+
+  document.getElementById("shock-type-list").addEventListener("click", (e) => {
+    const row = e.target.closest("[data-shock]");
+    if (!row) return;
+    state.simShockType = row.dataset.shock;
+    renderShockTypes();
+  });
+
+  document.getElementById("duration-group").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-duration]");
+    if (!btn) return;
+    state.simDuration = btn.dataset.duration;
+    renderDurationGroup();
+    state.ddayIdx = DURATION_DDAY_MAP[state.simDuration] ?? state.ddayIdx;
+    renderDdaySelect();
+    renderDomino();
+  });
+
+  document.getElementById("country-check-list").addEventListener("click", (e) => {
+    const row = e.target.closest("[data-country]");
+    if (!row) return;
+    state.simCountries[row.dataset.country] = !state.simCountries[row.dataset.country];
+    renderCountryChecks();
+  });
+
+  document.getElementById("run-sim-btn").addEventListener("click", () => {
+    const btn = document.getElementById("run-sim-btn");
+    state.simRunning = true;
+    btn.textContent = "분석 중...";
+    btn.disabled = true;
+    setTimeout(() => {
+      state.simRunning = false;
+      state.simRanAt = new Date();
+      btn.textContent = "▶ 시뮬레이션 실행";
+      btn.disabled = false;
+      document.getElementById("sim-last-run").textContent = `마지막 실행: ${state.simRanAt.toLocaleTimeString("ko-KR")}`;
+      runSimulation();
+      runStockpile();
+    }, 1200);
+  });
+
+  document.getElementById("sim-reset-btn").addEventListener("click", () => {
+    state.simShockType = "export";
+    state.simDuration = "6";
+    state.simCountries = { china: true, congo: true, chile: false, australia: false, philippines: false, indonesia: false, other: false };
+    state.simRanAt = null;
+    document.getElementById("sim-last-run").textContent = "아직 실행되지 않음";
+    renderShockTypes();
+    renderDurationGroup();
+    renderCountryChecks();
+  });
+}
+
+function renderShockTypes() {
+  document.getElementById("shock-type-list").innerHTML = SHOCK_TYPES.map((s) => `
+    <div class="radio-row" data-shock="${s.key}">
+      <span class="radio-dot ${state.simShockType === s.key ? "active" : ""}"></span>${s.label}
+    </div>`).join("");
+}
+
+function renderDurationGroup() {
+  document.getElementById("duration-group").innerHTML = DURATIONS.map((d) => `
+    <button type="button" class="toggle-btn ${state.simDuration === d ? "active" : ""}" data-duration="${d}">${d}개월</button>`).join("");
+}
+
+function renderCountryChecks() {
+  document.getElementById("country-check-list").innerHTML = SIM_COUNTRIES.map((c) => {
+    const on = !!state.simCountries[c.key];
+    return `<div class="check-row" data-country="${c.key}"><span class="check-box ${on ? "active" : ""}">${on ? "✓" : ""}</span>${c.label}</div>`;
+  }).join("");
 }
 
 function updatePreview() {
@@ -511,8 +917,11 @@ async function runSimulation() {
 }
 
 function renderAll(r) {
-  renderAlert(r);
-  renderMetrics(r);
+  renderSimKpiGrid(r);
+  renderSimLineChart(r);
+  renderSimHeatmapTable(r);
+  renderSimPathway(r);
+  renderSimInsightPanel(r);
   renderDdaySelect();
   renderDomino();
   renderDdayCards(r);
@@ -520,44 +929,135 @@ function renderAll(r) {
   updatePrintHeader();
 }
 
-// 접근성: 위험도를 색상만으로 구분하지 않도록 아이콘 병기 (아이콘은 장식용, aria-hidden)
-const RISK_ICONS = {
-  LOW: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3.2L13 4.5"/></svg>`,
-  MEDIUM: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2L1 14h14L8 2z"/><line x1="8" y1="6.3" x2="8" y2="9.3"/><circle cx="8" cy="11.4" r="0.7" fill="currentColor" stroke="none"/></svg>`,
-  HIGH: `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="4.8" x2="8" y2="8.6"/><circle cx="8" cy="11" r="0.7" fill="currentColor" stroke="none"/></svg>`,
-};
-
-function renderAlert(r) {
-  const shortName = r.mineral.replace(/\s*\(.*\)/, "");
-  const el = document.getElementById("alert-banner");
-  const cls = r.risk_level === "HIGH" ? "alert-high" : r.risk_level === "MEDIUM" ? "alert-medium" : "alert-low";
-  const badgeText = r.risk_level === "HIGH" ? "HIGH" : r.risk_level === "MEDIUM" ? "MEDIUM" : "LOW";
-  const desc = r.risk_level === "HIGH" ? "위험도 높음, 즉각 대응 필요"
-    : r.risk_level === "MEDIUM" ? "위험도 중간, 선제적 대응 권고"
-    : "위험도 낮음, 안정적 공급망 유지";
-
-  el.className = `alert ${cls}`;
-  document.getElementById("alert-badge").innerHTML = `${RISK_ICONS[r.risk_level]}${badgeText}`;
-  document.getElementById("alert-message").textContent =
-    `${shortName} 공급 제한 ${r.restriction_pct}% 시나리오 — ${desc}`;
+function renderSimKpiGrid(r) {
+  const s = state.stockpileResult;
+  const stockDaysDisp = s ? Math.round(s.coverage_days) : "-";
+  const stockColor = !s ? "var(--primary)" : (s.coverage_days < 40 ? "var(--danger)" : s.coverage_days < 60 ? "var(--warning)" : "var(--success)");
+  const urgentQty = s ? Math.round(s.shortage).toLocaleString("ko-KR") : "-";
+  const items = [
+    ["예상 공급 충격률", r.restriction_pct, "%", "var(--danger)"],
+    ["영향 기간", state.simDuration, "개월", "var(--primary)"],
+    ["국내 비축 여유", stockDaysDisp, "일분", stockColor],
+    ["긴급 조달 필요량", urgentQty, "톤", "var(--primary)"],
+  ];
+  document.getElementById("sim-kpi-grid").innerHTML = items.map(([label, val, unit, color]) => `
+    <div class="sim-kpi-card">
+      <div class="sim-kpi-label">${label}</div>
+      <div class="sim-kpi-value" style="color:${color}">${val}<span class="sim-kpi-unit"> ${unit}</span></div>
+    </div>`).join("");
 }
 
-function renderMetrics(r) {
+let simLineChart = null;
+function renderSimLineChart(r) {
+  const canvas = document.getElementById("sim-line-chart");
+  if (!canvas || typeof Chart === "undefined") return;
+  const months = [];
+  for (let i = -3; i <= 24; i++) months.push(i);
+  const pct = r.restriction_pct;
+  // D-Day cascade 실계산 비율(15%/55%/100%)로 곡선 형태를 근사
+  const shock = months.map((m) => {
+    if (m < 0) return 100;
+    if (m <= 0) return 100 - pct * 0.15;
+    if (m <= 1) return 100 - pct * 0.55;
+    if (m <= 2) return 100 - pct;
+    const recover = Math.min(1, (m - 2) / 10);
+    return Math.min(100, (100 - pct) + recover * pct);
+  });
+  const data = {
+    labels: months.map((m) => `${m}개월`),
+    datasets: [
+      { label: "정상 공급선", data: months.map(() => 100), borderColor: "#007AFF", borderDash: [6, 4], pointRadius: 0, fill: false, tension: 0 },
+      { label: "충격 시나리오", data: shock, borderColor: "#C0392B", backgroundColor: "rgba(192,57,43,0.1)", pointRadius: 0, fill: true, tension: 0.3 },
+      { label: "안전 기준선 (60%)", data: months.map(() => 60), borderColor: "#E67E22", borderDash: [4, 4], pointRadius: 0, fill: false },
+    ],
+  };
+  if (!simLineChart) {
+    simLineChart = new Chart(canvas.getContext("2d"), {
+      type: "line", data,
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { position: "bottom", labels: { font: { size: 11 }, boxWidth: 12 } } },
+        scales: { y: { min: 0, max: 110, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } } },
+      },
+    });
+  } else { simLineChart.data = data; simLineChart.update(); }
+}
+
+function renderSimHeatmapTable(r) {
+  const chain = r.mineral_info.supply_chain || [];
+  const dependency = r.mineral_info.china_mine_share;
+  const rows = chain.map((sector, idx) => {
+    const weight = Math.max(0.4, 1 - idx * 0.15);
+    const before = 100;
+    const after = Math.max(0, Math.round(100 - r.restriction_pct * weight));
+    const change = after - before;
+    let riskLabel, riskBg;
+    if (after < 40) { riskLabel = "위험"; riskBg = "var(--danger)"; }
+    else if (after < 60) { riskLabel = "심각"; riskBg = "var(--warning)"; }
+    else if (after < 80) { riskLabel = "주의"; riskBg = "#F39C12"; }
+    else { riskLabel = "안전"; riskBg = "var(--success)"; }
+    return `<tr class="${idx % 2 === 1 ? "zebra" : ""}">
+      <td>${sector}</td><td>${dependency}%</td><td>${before}%</td><td>${after}%</td><td>${change}%</td>
+      <td><span class="risk-badge" style="background:${riskBg};color:#fff">${riskLabel}</span></td>
+    </tr>`;
+  }).join("");
+  document.getElementById("sim-heatmap-table").innerHTML = `
+    <thead><tr><th>산업</th><th>중국 의존도</th><th>충격 전</th><th>충격 후</th><th>변화율</th><th>위험도</th></tr></thead>
+    <tbody>${rows}</tbody>`;
+}
+
+function renderSimPathway(r) {
   const shortName = r.mineral.replace(/\s*\(.*\)/, "");
-  const items = [
-    ["직접 수입 충격", `${fmt(r.shock_trillion)}조원`, `${shortName} 수입 기준 즉시 손실`, "var(--accent)"],
-    ["총 생산 파급 손실", `${fmt(r.total_prod)}조원`, "전후방 산업 연쇄 파급", "var(--loss-orange)"],
-    ["총 고용 위협", `${Math.round(r.total_emp).toLocaleString("ko-KR")}명`, "관련 산업 종사자 기준", "var(--employment-red)"],
-    ["생산유발 배수", `${fmt(r.multiplier, 1)}배`, "1단위 충격당 파급 배율", "var(--multiplier-blue)"],
-  ];
-  document.getElementById("metric-grid").innerHTML = items
-    .map(([label, val, sub, color]) => `
-      <div class="metric-card" style="--card-accent:${color}" role="group" aria-label="${label}: ${val}">
-        <div class="metric-label">${label}</div>
-        <div class="metric-value">${val}</div>
-        <div class="metric-sub">${sub}</div>
-      </div>`)
-    .join("");
+  const chain = r.mineral_info.supply_chain || [];
+  const nodes = [shortName, "항만", ...chain];
+  document.getElementById("sim-pathway").innerHTML = nodes.map((label, idx) => {
+    const shocked = idx === 0 && r.restriction_pct > 50;
+    const isLast = idx === nodes.length - 1;
+    return `<div class="pathway-item">
+      <div class="pathway-node${shocked ? " shocked" : ""}">${label}</div>
+      ${!isLast ? '<div class="pathway-arrow"></div>' : ""}
+    </div>`;
+  }).join("");
+}
+
+const SIM_RISK_MAP = {
+  HIGH: { color: "var(--danger)", label: "즉각 조치 필요" },
+  MEDIUM: { color: "var(--warning)", label: "모니터링 강화" },
+  LOW: { color: "var(--success)", label: "정상" },
+};
+
+function renderSimInsightPanel(r) {
+  const info = SIM_RISK_MAP[r.risk_level];
+  const box = document.getElementById("sim-risk-alert-box");
+  box.style.setProperty("--kpi-color", info.color);
+  const badge = document.getElementById("sim-risk-alert-badge");
+  badge.style.background = info.color;
+  badge.textContent = info.label;
+
+  document.getElementById("sim-recommendations").innerHTML = buildRecommendations(r).map((rec) => `
+    <div class="rec-row"><span class="rec-badge" style="background:${rec.color}">${rec.badge}</span><span>${rec.text}</span></div>`).join("");
+
+  const cur = state.stockDays;
+  const target = state.targetDays;
+  const pct = Math.min(100, Math.round((cur / target) * 100));
+  const barColor = pct < 50 ? "var(--danger)" : pct < 80 ? "var(--warning)" : "var(--success)";
+  document.getElementById("sim-stock-compare").innerHTML = `
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-quaternary);margin-bottom:6px">
+      <span>현재 ${cur}일</span><span>목표 ${target}일</span>
+    </div>
+    <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>`;
+}
+
+function buildRecommendations(r) {
+  const m = r.mineral_info;
+  const shortName = r.mineral.replace(/\s*\(.*\)/, "");
+  const recs = [];
+  if (r.risk_level === "HIGH") {
+    recs.push({ badge: "긴급", color: "var(--danger)", text: `${m.top_producer} 등 대체 공급처 긴급 협의 개시` });
+  }
+  recs.push({ badge: "권고", color: "var(--multiplier-blue)", text: "국내 비축분 조기 방출 검토 및 방출 규모 산정" });
+  recs.push({ badge: "권고", color: "var(--multiplier-blue)", text: `${shortName} 장기 계약 물량 비중 확대로 가격 변동성 완화` });
+  return recs;
 }
 
 function renderDdaySelect() {
@@ -688,7 +1188,7 @@ function setupAuth() {
     e.preventDefault();
     sessionStorage.setItem("ksupply_logged_in", "1");
     showDashboard();
-    switchView("landing");
+    switchView("dashboard");
   });
   const doLogout = () => {
     sessionStorage.removeItem("ksupply_logged_in");
@@ -719,8 +1219,9 @@ function startClock() {
 // FTA 강국 KOREA 레퍼런스처럼 실제로 페이지가 넘어가는 느낌을 주기 위해, SPA 방식(pushState)
 // 대신 진짜 브라우저 풀 네비게이션(location.href)을 사용. 광물/파라미터 선택값은 새로고침
 // 후에도 유지되도록 saveParams()/loadParams()로 세션스토리지에 저장·복원한다.
-const VIEW_PATHS = { landing: "/", simulate: "/simulate", stockpile: "/stockpile", compare: "/compare" };
-const PATH_VIEWS = { "/": "landing", "/simulate": "simulate", "/stockpile": "stockpile", "/compare": "compare" };
+const VIEW_PATHS = { dashboard: "/", simulate: "/simulate", stockpile: "/stockpile", compare: "/compare", reports: "/reports" };
+const PATH_VIEWS = { "/": "dashboard", "/simulate": "simulate", "/stockpile": "stockpile", "/compare": "compare", "/reports": "reports" };
+const ALL_VIEWS = ["dashboard", "simulate", "stockpile", "compare", "reports"];
 
 function setupViewTabs() {
   const onTabClick = (e) => {
@@ -730,7 +1231,7 @@ function setupViewTabs() {
   };
   document.getElementById("view-tabs").addEventListener("click", onTabClick);
   document.getElementById("mobile-tabbar").addEventListener("click", onTabClick);
-  document.getElementById("landing-pills").addEventListener("click", onTabClick);
+  document.getElementById("dashboard-alert").addEventListener("click", onTabClick);
   document.querySelector(".top-nav-brand").addEventListener("click", () => { window.location.href = "/"; });
 }
 function switchView(view) {
@@ -740,19 +1241,159 @@ function switchView(view) {
     btn.classList.toggle("active", isActive);
     btn.setAttribute("aria-current", String(isActive));
   });
-  document.getElementById("view-landing").hidden = view !== "landing";
-  document.getElementById("view-simulate").hidden = view !== "simulate";
-  document.getElementById("view-stockpile").hidden = view !== "stockpile";
-  document.getElementById("view-compare").hidden = view !== "compare";
+  ALL_VIEWS.forEach((v) => {
+    document.getElementById(`view-${v}`).hidden = v !== view;
+  });
   const activePage = document.getElementById(`view-${view}`);
   if (activePage) {
     activePage.classList.remove("page-enter");
     void activePage.offsetWidth; // 리플로우 강제 → 애니메이션 재시작
     activePage.classList.add("page-enter");
   }
-  document.getElementById("app-shell").classList.toggle("landing-mode", view === "landing");
+  document.getElementById("app-shell").classList.toggle("dashboard-mode", view === "dashboard");
   if (view === "stockpile" && state.mineralKey) runStockpile();
+  if (view === "dashboard") renderDashboard();
+  if (view === "reports") renderReportsList();
   updatePrintHeader();
+}
+
+// ── ① 통합 대시보드 (공급망 현황) ──────────────────────────
+// 알림/발간물 데이터는 data/alerts.csv, data/publications.csv, data/report_teasers.csv를
+// 직접 편집해 관리한다 (프로토타입 단계). 실 API 연동 시에는 backend/main.py의 해당
+// 엔드포인트 내부만 외부 API 호출로 바꾸면 되고, 이 파일의 렌더 로직은 그대로 둔다.
+const dashboardState = { mapMode: "all" };
+
+function setupDashboard() {
+  document.getElementById("map-mode-tabs").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-mode]");
+    if (!btn) return;
+    dashboardState.mapMode = btn.dataset.mode;
+    document.querySelectorAll("#map-mode-tabs button").forEach((b) => b.classList.toggle("active", b === btn));
+    const frame = document.getElementById("world-map-frame");
+    if (frame.contentWindow) frame.contentWindow.postMessage({ type: "setMode", mode: btn.dataset.mode }, "*");
+  });
+
+  document.getElementById("alert-tabs").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-cat]");
+    if (!btn) return;
+    state.dashboardAlertCat = btn.dataset.cat;
+    document.querySelectorAll("#alert-tabs button").forEach((b) => b.classList.toggle("active", b === btn));
+    renderAlertsList();
+  });
+
+  window.addEventListener("message", (e) => {
+    if (e.data && e.data.type === "countryClick") renderCountryPanel(e.data);
+  });
+
+  document.getElementById("report-teasers").innerHTML = state.reportTeasers.map((r) => `
+    <button type="button" class="color-block-card c-${r.color}" data-view="reports">
+      <div class="color-block-card-title">${r.title}</div>
+      <div class="color-block-card-desc">${r.desc}</div>
+    </button>`).join("");
+  document.getElementById("report-teasers").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-view]");
+    if (!btn) return;
+    window.location.href = VIEW_PATHS[btn.dataset.view] || "/";
+  });
+
+  state.dashboardAlertCat = "supply";
+  renderAlertsList();
+}
+
+function renderCountryPanel(info) {
+  const riskClass = info.risk === "위험" ? "HIGH" : info.risk === "경계" ? "MEDIUM" : "LOW";
+  document.getElementById("country-panel").innerHTML = `
+    <div class="country-panel-flag">${info.flag || ""}</div>
+    <div class="country-panel-name">${info.name}</div>
+    <div class="country-panel-row"><span>주요 수출 광물</span><b>${info.minerals}</b></div>
+    <div class="country-panel-row"><span>한국 수입 의존도</span><b>${info.dependency}%</b></div>
+    <div class="country-panel-row"><span>위험도</span><span class="risk-badge ${riskClass}">${info.risk}</span></div>
+  `;
+}
+
+function renderAlertsList() {
+  const items = state.alerts.filter((a) => a.category === state.dashboardAlertCat);
+  document.getElementById("alerts-list").innerHTML = items.map((a) => `
+    <div class="alert-item">
+      <span class="alert-item-time">${a.time}</span>
+      <span class="alert-item-title">${a.title}</span>
+      <span class="risk-badge ${a.risk}">${a.risk}</span>
+    </div>`).join("");
+}
+
+// 위험 광물 유무는 실 데이터(각 광물의 기본 시나리오 shock_example)로 판단 — mock 아님
+function renderDashboardAlert() {
+  const minerals = Object.entries(state.minerals);
+  const highRisk = minerals.filter(([, m]) => m.shock_example >= 50);
+  const banner = document.getElementById("dashboard-alert");
+  if (highRisk.length) {
+    banner.classList.add("show");
+    const shortName = highRisk[0][0].replace(/\s*\(.*\)/, "");
+    document.getElementById("dashboard-alert-text").textContent =
+      `⚠ ${shortName} 등 ${highRisk.length}개 광물 공급 위험 감지 — 즉각 조치 필요`;
+  } else {
+    banner.classList.remove("show");
+  }
+}
+
+function renderDashboardKPI() {
+  const minerals = Object.values(state.minerals);
+  const total = minerals.length;
+  const riskCount = minerals.filter((m) => m.shock_example >= 50).length;
+  // MOCK — 실 데이터 연동 필요 (금일 조달 요청 건수·공급망 종합점수는 백엔드 집계 지표 부재로 임시값)
+  const mockProcurementToday = 3;
+  const supplyScore = Math.max(0, Math.round(100 - (riskCount / Math.max(total, 1)) * 60));
+  const items = [
+    ["관리 광물 수", `${total}종`, "var(--primary)"],
+    ["위험 광물 수", `${riskCount}종`, "var(--danger)"],
+    ["현재 설정 비축일수", `${state.stockDays}일`, "var(--multiplier-blue)"],
+    ["활성 비교 시나리오", `${state.compareChecked.size}건`, "var(--success)"],
+    ["금일 조달 요청 (mock)", `${mockProcurementToday}건`, "var(--warning)"],
+    ["공급망 종합점수 (mock)", `${supplyScore}점`, "var(--primary)"],
+  ];
+  document.getElementById("dashboard-kpi").innerHTML = items.map(([label, val, color]) => `
+    <div class="kpi-card" style="--kpi-color:${color}">
+      <div class="kpi-label">${label}</div>
+      <div class="kpi-value">${val}</div>
+    </div>`).join("");
+}
+
+function renderDashboard() {
+  if (!state.mineralKey) return;
+  renderDashboardAlert();
+  renderDashboardKPI();
+}
+
+// ── ⑤ 정책·보고서 (data/publications.csv, data/report_teasers.csv 직접 편집 관리) ──
+const reportsState = { cat: "전체" };
+function setupReportsView() {
+  document.getElementById("publication-cards").innerHTML = state.reportTeasers.map((r) => `
+    <div class="color-block-card c-${r.color}">
+      <div class="color-block-card-title">${r.title}</div>
+      <div class="color-block-card-desc">${r.desc}</div>
+    </div>`).join("");
+
+  document.getElementById("reports-filter").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-cat]");
+    if (!btn) return;
+    reportsState.cat = btn.dataset.cat;
+    document.querySelectorAll("#reports-filter button").forEach((b) => b.classList.toggle("active", b === btn));
+    renderReportsList();
+  });
+}
+
+function renderReportsList() {
+  const filtered = reportsState.cat === "전체"
+    ? state.publications
+    : state.publications.filter((p) => p.category === reportsState.cat);
+  document.getElementById("reports-meta").textContent = `${filtered.length}건`;
+  document.getElementById("reports-list").innerHTML = filtered.map((p) => `
+    <div class="reports-list-item">
+      <span class="reports-date">${p.date}</span>
+      <span class="reports-cat-badge">${p.category}</span>
+      <span class="reports-title">${p.title}</span>
+      <button type="button" class="reports-dl-btn" disabled title="데모 버전에서는 다운로드가 제공되지 않습니다">다운로드</button>
+    </div>`).join("");
 }
 
 // ── 랜딩 화면: 유관기관 바로가기 캐러셀 ───────────────────
@@ -785,6 +1426,199 @@ function setupLandingCarousel() {
     if (!carouselState.paused) advance(1);
   }, 3000);
   renderCarousel();
+}
+
+// ── ④ 시나리오 비교 (A/B/C, 실 /api/simulate·/api/stockpile 연동) ──
+function setupScenarioView() {
+  renderScenToggles();
+  document.getElementById("scen-toggles").addEventListener("click", (e) => {
+    const row = e.target.closest("[data-scen]");
+    if (!row) return;
+    const key = row.dataset.scen;
+    state.scenSelected[key] = !state.scenSelected[key];
+    renderScenToggles();
+    renderScenario();
+  });
+  document.getElementById("scen-run-btn").addEventListener("click", () => loadScenarioData());
+  document.getElementById("scen-export-btn").addEventListener("click", () => window.print());
+  document.getElementById("scen-report-btn").addEventListener("click", () => window.print());
+
+  loadScenarioData();
+}
+
+function renderScenToggles() {
+  document.getElementById("scen-toggles").innerHTML = SCENARIO_DEFS.map((s) => `
+    <div class="scen-toggle" data-scen="${s.key}">
+      <span class="scen-toggle-box" style="background:${state.scenSelected[s.key] ? s.color : "#fff"};border-color:${s.color}"></span>${s.label}
+    </div>`).join("");
+}
+
+async function loadScenarioData() {
+  const results = await Promise.all(SCENARIO_DEFS.map(async (def) => {
+    const m = state.minerals[def.mineralKey];
+    const simParams = new URLSearchParams({ mineral: def.mineralKey, restriction_pct: def.pct, korea_import_bn: m.korea_import_bn });
+    const r = await fetchJSON(`${API}/api/simulate?${simParams}`);
+    const stockParams = new URLSearchParams({
+      mineral: def.mineralKey, restriction_pct: def.pct, korea_import_bn: m.korea_import_bn,
+      days_stock: 45, daily_cons_ton: 500, release_pct: 50, import_cost: 0.5, target_days: 60,
+    });
+    const s = await fetchJSON(`${API}/api/stockpile?${stockParams}`);
+    return { ...def, m, r, s };
+  }));
+  state.scenarioResults = results;
+  renderScenario();
+}
+
+function renderScenario() {
+  if (!state.scenarioResults) return;
+  const selected = state.scenarioResults.filter((s) => state.scenSelected[s.key]);
+  const cols = `repeat(${Math.max(1, selected.length)}, 1fr)`;
+  ["scen-header-grid", "scen-kpi-grid", "scen-heatmap-grid", "scen-radar-grid", "scen-ai-grid"].forEach((id) => {
+    document.getElementById(id).style.gridTemplateColumns = cols;
+  });
+
+  document.getElementById("scen-header-grid").innerHTML = selected.map((s) => `
+    <div class="scen-header-block" style="background:${s.color}">
+      <div class="scen-header-title">${s.label}</div>
+      <div class="scen-header-sub">${s.shockLabel} · 강도 ${s.pct}%</div>
+    </div>`).join("");
+
+  if (!selected.length) {
+    ["scen-kpi-grid", "scen-heatmap-grid", "scen-radar-grid", "scen-ai-grid"].forEach((id) => { document.getElementById(id).innerHTML = ""; });
+    document.getElementById("scen-pareto-wrap").innerHTML = "";
+    document.getElementById("scen-best-label").textContent = "최적 시나리오: -";
+    return;
+  }
+
+  const worstSupplyDrop = Math.max(...selected.map((s) => s.pct));
+  const worstStockDays = Math.min(...selected.map((s) => s.s.coverage_days));
+  const worstUrgentQty = Math.max(...selected.map((s) => s.s.shortage));
+  const worstEconLoss = Math.max(...selected.map((s) => s.r.total_prod));
+  document.getElementById("scen-kpi-grid").innerHTML = selected.map((s) => {
+    const kpis = [
+      ["공급 감소율", `${s.pct}%`, s.pct === worstSupplyDrop],
+      ["비축 여유 일수", `${Math.round(s.s.coverage_days)}일`, s.s.coverage_days === worstStockDays],
+      ["긴급 조달 필요량", `${Math.round(s.s.shortage).toLocaleString("ko-KR")}톤`, s.s.shortage === worstUrgentQty],
+      ["경제적 피해 추정액", `${fmt(s.r.total_prod)}조원`, s.r.total_prod === worstEconLoss],
+    ];
+    return `<div class="scen-kpi-col">${kpis.map(([label, val, worst]) => `
+      <div class="scen-kpi-card ${worst ? "worst" : ""}">
+        <div class="scen-kpi-label">${label}</div>
+        <div class="scen-kpi-value" style="color:${s.color}">${val}</div>
+      </div>`).join("")}</div>`;
+  }).join("");
+
+  document.getElementById("scen-heatmap-grid").innerHTML = selected.map((s) => {
+    const top5 = s.r.sector_impacts.slice(0, 5);
+    const maxLoss = top5.length ? top5[0].prod_loss : 1;
+    const rows = top5.map((sec) => {
+      const score = Math.round((sec.prod_loss / maxLoss) * 100);
+      const bg = score >= 75 ? "var(--danger)" : score >= 55 ? "var(--warning)" : score >= 35 ? "#F39C12" : "var(--success)";
+      return `<div class="scen-heatmap-row"><span>${sec.sector}</span><span class="scen-heatmap-score" style="background:${bg}">${score}</span></div>`;
+    }).join("");
+    return `<div class="scen-heatmap-card">${rows}</div>`;
+  }).join("");
+
+  renderScenLineChart(selected);
+  renderScenCostChart(selected);
+  renderScenPareto(selected);
+  renderScenRadars(selected);
+
+  document.getElementById("scen-ai-grid").innerHTML = selected.map((s) => {
+    const actions = buildRecommendations(s.r).map((rec) => rec.text);
+    return `<div class="ai-box" style="--kpi-color:${s.color}">
+      <div class="ai-box-title">AI 권고 요약</div>
+      <div class="ai-box-summary">${s.shockLabel} 시나리오 기준 공급 ${s.pct}% 제한 시 총 생산 파급 손실 ${fmt(s.r.total_prod)}조원, 비축 커버리지 ${Math.round(s.s.coverage_days)}일 확보.</div>
+      ${actions.map((a) => `<div class="ai-box-action">· ${a}</div>`).join("")}
+    </div>`;
+  }).join("");
+
+  const best = selected.reduce((a, b) => (a.r.total_prod <= b.r.total_prod ? a : b), selected[0]);
+  document.getElementById("scen-best-label").textContent = `최적 시나리오: ${best.label} (${best.mineralKey.replace(/\s*\(.*\)/, "")})`;
+}
+
+let scenLineChart = null;
+function renderScenLineChart(selected) {
+  const canvas = document.getElementById("scen-line-chart");
+  if (!canvas || typeof Chart === "undefined") return;
+  const months = [];
+  for (let i = 0; i <= 12; i++) months.push(i);
+  const datasets = selected.map((s) => ({
+    label: s.label, borderColor: s.color, borderDash: s.key === "A" ? [] : [6, 4],
+    data: months.map((m) => {
+      if (m === 0) return 100;
+      if (m <= 1) return 100 - s.pct * 0.15;
+      if (m <= 2) return 100 - s.pct * 0.55;
+      if (m <= 4) return 100 - s.pct;
+      const recover = Math.min(1, (m - 4) / 8);
+      return Math.min(100, (100 - s.pct) + recover * s.pct);
+    }),
+    pointRadius: 0, fill: false, tension: 0.3,
+  }));
+  datasets.push({ label: "정상 공급", data: months.map(() => 100), borderColor: "#AAAAAA", borderDash: [3, 3], pointRadius: 0, fill: false });
+  datasets.push({ label: "안전 임계선", data: months.map(() => 60), borderColor: "#C0392B", borderDash: [4, 4], pointRadius: 0, fill: false });
+  const data = { labels: months.map((m) => `${m}개월`), datasets };
+  if (!scenLineChart) {
+    scenLineChart = new Chart(canvas.getContext("2d"), {
+      type: "line", data,
+      options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: "bottom", labels: { font: { size: 10 }, boxWidth: 10 } } }, scales: { y: { min: 0, max: 110, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 9 } } } } },
+    });
+  } else { scenLineChart.data = data; scenLineChart.update(); }
+}
+
+let scenCostChart = null;
+function renderScenCostChart(selected) {
+  const canvas = document.getElementById("scen-cost-chart");
+  if (!canvas || typeof Chart === "undefined") return;
+  const cats = ["조달비용", "비축비용", "기회비용"];
+  const datasets = selected.map((s) => ({
+    label: s.label, backgroundColor: s.color,
+    data: [
+      Math.round(s.s.emergency_cost),
+      Math.round(s.s.usable_stock * 0.5 * 0.25),
+      Math.round(s.r.total_prod * 1000),
+    ],
+  }));
+  const data = { labels: cats, datasets };
+  if (!scenCostChart) {
+    scenCostChart = new Chart(canvas.getContext("2d"), {
+      type: "bar", data,
+      options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: "bottom", labels: { font: { size: 10 }, boxWidth: 10 } } }, scales: { y: { ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 10 } } } } },
+    });
+  } else { scenCostChart.data = data; scenCostChart.update(); }
+}
+
+function renderScenPareto(selected) {
+  if (!selected.length) { document.getElementById("scen-pareto-wrap").innerHTML = ""; return; }
+  const worst = selected.reduce((a, b) => (a.r.total_prod >= b.r.total_prod ? a : b));
+  const top5 = worst.r.sector_impacts.slice(0, 5);
+  const total = top5.reduce((sum, s) => sum + s.prod_loss, 0) || 1;
+  let cum = 0;
+  const rows = top5.map((sec) => {
+    const pct = (sec.prod_loss / total) * 100;
+    cum += pct;
+    return { name: sec.sector, pct, cum, color: cum <= 80 ? "var(--primary)" : "var(--multiplier-blue)" };
+  });
+  document.getElementById("scen-pareto-wrap").innerHTML = `
+    <div style="font-size:11px;color:var(--text-quaternary);margin-bottom:10px">기준 시나리오: ${worst.label} (${worst.mineralKey.replace(/\s*\(.*\)/, "")}) — 생산 파급 손실 상위 5개 산업</div>
+    ${rows.map((p) => `
+    <div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${p.name}</span><span>${p.pct.toFixed(1)}% · 누적 ${p.cum.toFixed(1)}%</span></div>
+      <div class="industry-track"><div class="industry-bar" style="width:${Math.max(4, p.pct * 3).toFixed(0)}%;background:${p.color}"></div></div>
+    </div>`).join("")}`;
+}
+
+function renderScenRadars(selected) {
+  document.getElementById("scen-radar-grid").innerHTML = selected.map((s) => {
+    const supplySecurity = Math.max(0, 100 - s.pct);
+    const costEfficiency = Math.max(0, 100 - Math.min(100, s.s.emergency_cost / 5));
+    const speed = Math.max(0, 100 - Math.min(100, s.s.coverage_days));
+    const diversification = Math.max(0, 100 - s.m.china_mine_share);
+    const resilience = Math.max(0, 100 - (s.r.risk_level === "HIGH" ? 70 : s.r.risk_level === "MEDIUM" ? 45 : 20));
+    const cats = ["공급안보", "비용효율", "조달속도", "다변화", "회복력"];
+    const opts = [{ name: s.label, scores: [supplySecurity, costEfficiency, speed, diversification, resilience], color: s.color }];
+    return `<div class="scen-radar-card">${buildRadarSVG(cats, opts)}</div>`;
+  }).join("");
 }
 
 // ── ② 시나리오 비교 ───────────────────────────────────────
@@ -1203,38 +2037,6 @@ function renderPrintReportStockpile() {
   `;
 }
 
-// ── 모바일 바텀시트 (광물 칩 탭 → 시뮬레이션 조건 설정 열기) ──
-function setupMobileDrawer() {
-  const sidebar = document.getElementById("sidebar");
-  const backdrop = document.getElementById("sidebar-backdrop");
-  const openBtn = document.getElementById("mineral-chip-trigger");
-  const closeBtn = document.getElementById("sidebar-close-btn");
-  const applyBtn = document.getElementById("sidebar-apply-btn");
-
-  const openDrawer = () => {
-    sidebar.classList.add("open");
-    backdrop.classList.add("open");
-    openBtn.setAttribute("aria-expanded", "true");
-  };
-  const closeDrawer = () => {
-    sidebar.classList.remove("open");
-    backdrop.classList.remove("open");
-    openBtn.setAttribute("aria-expanded", "false");
-  };
-
-  openBtn.addEventListener("click", openDrawer);
-  closeBtn.addEventListener("click", closeDrawer);
-  applyBtn.addEventListener("click", closeDrawer);
-  backdrop.addEventListener("click", closeDrawer);
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
-
-  // 광물 선택 시 모바일에서는 바텀시트 자동 닫기 (본문 결과를 바로 볼 수 있도록)
-  document.getElementById("mineral-list").addEventListener("click", () => {
-    if (window.innerWidth <= 860) closeDrawer();
-  });
-}
-
-setupMobileDrawer();
 setupAuth();
 startClock();
 init();
