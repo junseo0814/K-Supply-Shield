@@ -104,13 +104,14 @@ function render(geo){
     var lx = Math.max(60, Math.min(width - 60, c[0] + offset[0]));
     var ly = Math.max(20, Math.min(height - 20, c[1] + offset[1]));
 
-    leaderLayer.append('circle').attr('cx', c[0]).attr('cy', c[1]).attr('r', 3).attr('fill', '#1B2556');
+    leaderLayer.append('circle').attr('cx', c[0]).attr('cy', c[1]).attr('r', 3).attr('fill', '#1B2556').attr('data-id', id);
     leaderLayer.append('line')
       .attr('x1', c[0]).attr('y1', c[1]).attr('x2', lx).attr('y2', ly)
-      .attr('stroke', '#1B2556').attr('stroke-width', 1).attr('stroke-dasharray', '3,3');
+      .attr('stroke', '#1B2556').attr('stroke-width', 1).attr('stroke-dasharray', '3,3').attr('data-id', id);
 
     var div = document.createElement('div');
     div.className = 'label';
+    div.dataset.id = id;
     div.style.left = lx + 'px';
     div.style.top = ly + 'px';
     div.style.pointerEvents = 'auto';
@@ -130,6 +131,17 @@ window.addEventListener('message', function(e){
       if (!info) return '#FFFFFF';
       if (mode === 'risk' && info.level !== 'high') return '#FFFFFF';
       return COLORS[info.level];
+    });
+    // 위험 광물만 모드에서는 위험도 낮은 국가의 국기/이름 라벨과 지시선도 함께 숨긴다
+    Object.keys(DATA).forEach(function(id){
+      var info = DATA[id];
+      var show = !(mode === 'risk' && info.level !== 'high');
+      var disp = show ? '' : 'none';
+      var label = document.querySelector('.label[data-id="' + id + '"]');
+      if (label) label.style.display = show ? 'flex' : 'none';
+      document.querySelectorAll('[data-id="' + id + '"]').forEach(function(el){
+        if (el !== label) el.style.display = disp;
+      });
     });
   }
 });

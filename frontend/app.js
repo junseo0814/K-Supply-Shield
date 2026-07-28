@@ -29,6 +29,8 @@ const MINERAL_ACCENTS = {
   "망간 (Manganese)": "#885cb5",
   "희토류 (Rare Earths)": "#9a6b00",
   "텅스텐 (Tungsten)": "#008a9b",
+  "게르마늄 (Germanium)": "#8338ec",
+  "갈륨 (Gallium)": "#c9184a",
 };
 // 위 accent보다 어두운 톤 (oklch(0.4 0.15 {hue})) — 흰 배경 위 강조 텍스트용 (WCAG AA 대비 확보)
 const MINERAL_ACCENTS_DARK = {
@@ -39,6 +41,8 @@ const MINERAL_ACCENTS_DARK = {
   "망간 (Manganese)": "#5b2987",
   "희토류 (Rare Earths)": "#6b3c00",
   "텅스텐 (Tungsten)": "#005a6d",
+  "게르마늄 (Germanium)": "#5a1fb0",
+  "갈륨 (Gallium)": "#8a0f36",
 };
 
 const state = {
@@ -88,10 +92,13 @@ const state = {
   scenarioResults: null,
 };
 
+// prob(발동확률)은 USGS 확률가중 GDP손실모델 방법론을 참고한 예시치 — 실제 발동확률
+// 추정은 정교한 통계모형이 필요하므로, 여기서는 최근 실제 동향(중국 수출통제 상시화 등)을
+// 반영한 시연용 근사값을 사용한다.
 const SCENARIO_DEFS = [
-  { key: "A", label: "시나리오 A", mineralKey: "희토류 (Rare Earths)", pct: 70, color: "#1B2556", shockLabel: "중국 희토류 수출통제" },
-  { key: "B", label: "시나리오 B", mineralKey: "니켈 (Nickel)", pct: 50, color: "#007AFF", shockLabel: "인도네시아 물류 리스크" },
-  { key: "C", label: "시나리오 C", mineralKey: "코발트 (Cobalt)", pct: 80, color: "#E67E22", shockLabel: "DRC 코발트 공급 중단" },
+  { key: "A", label: "시나리오 A", mineralKey: "희토류 (Rare Earths)", pct: 70, color: "#1B2556", shockLabel: "중국 희토류 수출통제", prob: 35 },
+  { key: "B", label: "시나리오 B", mineralKey: "니켈 (Nickel)", pct: 50, color: "#007AFF", shockLabel: "인도네시아 물류 리스크", prob: 18 },
+  { key: "C", label: "시나리오 C", mineralKey: "코발트 (Cobalt)", pct: 80, color: "#E67E22", shockLabel: "DRC 코발트 공급 중단", prob: 22 },
 ];
 
 const PROC_METHODS = [
@@ -1329,18 +1336,57 @@ function renderAlertsList() {
 }
 
 // 위험 광물 유무는 실 데이터(각 광물의 기본 시나리오 shock_example)로 판단 — mock 아님
+// EU CRMA 벤치마킹: 단일국 의존도 65% 초과 시 자동 경보 트리거 (worldmap.html DATA와 동일 소스값)
+const COUNTRY_DEPENDENCY = [
+  { name: "중국", dependency: 62 },
+  { name: "콩고민주공화국", dependency: 78 },
+  { name: "칠레", dependency: 45 },
+  { name: "호주", dependency: 38 },
+  { name: "필리핀", dependency: 30 },
+  { name: "인도네시아", dependency: 35 },
+];
+const DEPENDENCY_ALERT_THRESHOLD = 65;
+
 function renderDashboardAlert() {
   const minerals = Object.entries(state.minerals);
   const highRisk = minerals.filter(([, m]) => m.shock_example >= 50);
+  const depAlert = COUNTRY_DEPENDENCY.filter((c) => c.dependency >= DEPENDENCY_ALERT_THRESHOLD);
   const banner = document.getElementById("dashboard-alert");
-  if (highRisk.length) {
+  if (highRisk.length || depAlert.length) {
     banner.classList.add("show");
-    const shortName = highRisk[0][0].replace(/\s*\(.*\)/, "");
-    document.getElementById("dashboard-alert-text").textContent =
-      `⚠ ${shortName} 등 ${highRisk.length}개 광물 공급 위험 감지 — 즉각 조치 필요`;
+    const parts = [];
+    if (depAlert.length) {
+      const maxDep = Math.max(...depAlert.map((c) => c.dependency));
+      parts.push(`${depAlert.map((c) => c.name).join("·")} 의존도 ${maxDep}% (EU CRMA 임계값 65% 초과)`);
+    }
+    if (highRisk.length) {
+      const shortName = highRisk[0][0].replace(/\s*\(.*\)/, "");
+      parts.push(`${shortName} 등 ${highRisk.length}개 광물 공급 위험`);
+    }
+    document.getElementById("dashboard-alert-text").textContent = `⚠ ${parts.join(" · ")} — 즉각 조치 필요`;
   } else {
     banner.classList.remove("show");
   }
+}
+
+function renderDetectCompare() {
+  const el = document.getElementById("detect-compare");
+  if (!el || !state.komis.length) return;
+  const first = state.komis[0];
+  const last = state.komis[state.komis.length - 1];
+  const changePct = (Number(last["희소금속지수"]) / Number(first["희소금속지수"]) - 1) * 100;
+  el.innerHTML = `
+    <div class="detect-box muted">
+      <div class="detect-box-title">기존 방식 — 관세청 수출입 통계</div>
+      <div class="detect-box-value">2~4주 지연 반영</div>
+      <div class="detect-box-desc">중국이 당일 수출을 통제해도 통관 통계에는 최소 2주~1개월 후에야 반영됨 (2021 요소수 대란 사례)</div>
+    </div>
+    <div class="detect-arrow">→</div>
+    <div class="detect-box accent">
+      <div class="detect-box-title">K-Supply Shield — KOMIS 연동</div>
+      <div class="detect-box-value">${last["연월"]} 최신 반영</div>
+      <div class="detect-box-desc">KOMIS 광물종합지수는 매주 갱신 · 희소금속지수 12개월 변화율 ${fmtPct(changePct)} 즉시 확인 가능</div>
+    </div>`;
 }
 
 function renderDashboardKPI() {
@@ -1369,6 +1415,7 @@ function renderDashboard() {
   if (!state.mineralKey) return;
   renderDashboardAlert();
   renderDashboardKPI();
+  renderDetectCompare();
 }
 
 // ── ⑤ 정책·보고서 (data/publications.csv, data/report_teasers.csv 직접 편집 관리) ──
@@ -1492,7 +1539,7 @@ function renderScenario() {
   document.getElementById("scen-header-grid").innerHTML = selected.map((s) => `
     <div class="scen-header-block" style="background:${s.color}">
       <div class="scen-header-title">${s.label}</div>
-      <div class="scen-header-sub">${s.shockLabel} · 강도 ${s.pct}%</div>
+      <div class="scen-header-sub">${s.shockLabel} · 강도 ${s.pct}% · 발동확률 ${s.prob}%</div>
     </div>`).join("");
 
   if (!selected.length) {
@@ -1506,12 +1553,16 @@ function renderScenario() {
   const worstStockDays = Math.min(...selected.map((s) => s.s.coverage_days));
   const worstUrgentQty = Math.max(...selected.map((s) => s.s.shortage));
   const worstEconLoss = Math.max(...selected.map((s) => s.r.total_prod));
+  const worstWeighted = Math.max(...selected.map((s) => s.r.total_prod * (s.prob / 100)));
   document.getElementById("scen-kpi-grid").innerHTML = selected.map((s) => {
+    const weighted = s.r.total_prod * (s.prob / 100);
     const kpis = [
       ["공급 감소율", `${s.pct}%`, s.pct === worstSupplyDrop],
+      ["발동확률 (USGS 방법론 참고)", `${s.prob}%`, false],
       ["비축 여유 일수", `${Math.round(s.s.coverage_days)}일`, s.s.coverage_days === worstStockDays],
       ["긴급 조달 필요량", `${Math.round(s.s.shortage).toLocaleString("ko-KR")}톤`, s.s.shortage === worstUrgentQty],
       ["경제적 피해 추정액", `${fmt(s.r.total_prod)}조원`, s.r.total_prod === worstEconLoss],
+      ["확률가중 손실액", `${fmt(weighted)}조원`, weighted === worstWeighted],
     ];
     return `<div class="scen-kpi-col">${kpis.map(([label, val, worst]) => `
       <div class="scen-kpi-card ${worst ? "worst" : ""}">
@@ -1540,7 +1591,7 @@ function renderScenario() {
     const actions = buildRecommendations(s.r).map((rec) => rec.text);
     return `<div class="ai-box" style="--kpi-color:${s.color}">
       <div class="ai-box-title">AI 권고 요약</div>
-      <div class="ai-box-summary">${s.shockLabel} 시나리오 기준 공급 ${s.pct}% 제한 시 총 생산 파급 손실 ${fmt(s.r.total_prod)}조원, 비축 커버리지 ${Math.round(s.s.coverage_days)}일 확보.</div>
+      <div class="ai-box-summary">${s.shockLabel} 시나리오 기준 공급 ${s.pct}% 제한 시 총 생산 파급 손실 ${fmt(s.r.total_prod)}조원, 비축 커버리지 ${Math.round(s.s.coverage_days)}일 확보. 발동확률 ${s.prob}% 반영 시 확률가중 손실액은 ${fmt(s.r.total_prod * (s.prob / 100))}조원.</div>
       ${actions.map((a) => `<div class="ai-box-action">· ${a}</div>`).join("")}
     </div>`;
   }).join("");

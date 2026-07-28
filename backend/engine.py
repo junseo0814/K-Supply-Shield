@@ -89,6 +89,23 @@ MINERAL_DATA = {
         'supply_chain': ['광산품', '화학제품', '기계·장비', '전기·전자기기'],
         'color': '#fb8500', 'usgs_note': '2025년 2월 중국 수출통제 발동 (텅스텐 분말 포함)',
     },
+    # 게르마늄·갈륨: korea_import_bn은 관세청 실측 데이터를 아직 확보하지 못해 잠정 추정치임
+    # (다른 5종은 관세청 실측). 나머지 수치는 IEA/패스트마켓·글로벌이코노믹·파이낸셜타임스
+    # 2026.7.15~17 보도 기준 (정책연구 1팀 배경자료 34p 인용).
+    '게르마늄 (Germanium)': {
+        'en': 'Germanium', 'world_prod_2025': 140, 'china_mine_share': 68,
+        'top_producer': '중국 (68%)', 'hs_codes': ['8112921000'],
+        'korea_import_bn': 400, 'key_use': '광섬유, 적외선광학, 태양전지, 반도체', 'shock_example': 70,
+        'supply_chain': ['광산품', '화학제품', '컴퓨터, 전자 및 광학기기', '전기·전자기기'],
+        'color': '#8338ec', 'usgs_note': '2026.7 기준 가격 5.5배 폭등(2,000→11,000달러/kg). korea_import_bn은 추정치',
+    },
+    '갈륨 (Gallium)': {
+        'en': 'Gallium', 'world_prod_2025': 430, 'china_mine_share': 99,
+        'top_producer': '중국 (99%, 정제 기준)', 'hs_codes': ['8112921000'],
+        'korea_import_bn': 500, 'key_use': '화합물반도체(GaAs·GaN), LED, 태양전지', 'shock_example': 70,
+        'supply_chain': ['광산품', '화학제품', '컴퓨터, 전자 및 광학기기', '전기·전자기기'],
+        'color': '#ff006e', 'usgs_note': '2026.7 기준 가격 5.6배 폭등(500→2,800달러/kg), 中 정제 독점(프로젝트 블루). korea_import_bn은 추정치',
+    },
 }
 
 DDAY_STAGES = {
