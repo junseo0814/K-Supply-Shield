@@ -1,4 +1,4 @@
-// K-Supply Shield — Tab1 (충격 시뮬레이션) 프론트엔드 로직
+// K-CESS — Tab1 (충격 시뮬레이션) 프론트엔드 로직
 // 시각 언어는 디자인 목업(design_handoff_ksupply_shield)을 이식, 데이터/계산은 실제 백엔드 API 사용.
 const API = "";
 
@@ -1383,7 +1383,7 @@ function renderDetectCompare() {
     </div>
     <div class="detect-arrow">→</div>
     <div class="detect-box accent">
-      <div class="detect-box-title">K-Supply Shield — KOMIS 연동</div>
+      <div class="detect-box-title">K-CESS — KOMIS 연동</div>
       <div class="detect-box-value">${last["연월"]} 최신 반영</div>
       <div class="detect-box-desc">KOMIS 광물종합지수는 매주 갱신 · 희소금속지수 12개월 변화율 ${fmtPct(changePct)} 즉시 확인 가능</div>
     </div>`;
@@ -1844,7 +1844,7 @@ function renderPrintReportSimulate() {
   const r = state.simResult;
   const shortName = r.mineral.replace(/\s*\(.*\)/, "");
   document.getElementById("report-title").textContent = `${shortName} 공급망 충격 시뮬레이션 보고`;
-  document.getElementById("report-meta").textContent = `- 출력일 ${todayStr()}, K-Supply Shield 시뮬레이터 -`;
+  document.getElementById("report-meta").textContent = `- 출력일 ${todayStr()}, K-CESS 시뮬레이터 -`;
 
   const cascadeRows = DDAY_KEYS.map((key) => {
     const d = r.cascade[key];
@@ -1967,7 +1967,7 @@ function renderPrintReportSimulate() {
 function renderPrintReportCompare() {
   const results = state.compareResults;
   document.getElementById("report-title").textContent = "핵심광물 공급 시나리오 비교 보고";
-  document.getElementById("report-meta").textContent = `- 출력일 ${todayStr()}, K-Supply Shield 시뮬레이터 -`;
+  document.getElementById("report-meta").textContent = `- 출력일 ${todayStr()}, K-CESS 시뮬레이터 -`;
 
   const top5 = results.slice(0, 5);
   const summaryRows = top5.map((r, i) => {
@@ -2039,7 +2039,7 @@ function renderPrintReportStockpile() {
   const t = s.thresholds;
   const shortName = state.mineralKey.replace(/\s*\(.*\)/, "");
   document.getElementById("report-title").textContent = `${shortName} 비축 조달 의사결정 보고`;
-  document.getElementById("report-meta").textContent = `- 출력일 ${todayStr()}, K-Supply Shield 시뮬레이터 -`;
+  document.getElementById("report-meta").textContent = `- 출력일 ${todayStr()}, K-CESS 시뮬레이터 -`;
 
   const signalText = {
     RED: "위험 — 즉각 비축 확충", YELLOW_CAUTION: "주의 — 비축 확대 권고",

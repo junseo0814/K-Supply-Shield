@@ -1,5 +1,5 @@
 """
-K-Supply Shield FastAPI 백엔드
+K-CESS FastAPI 백엔드
 계산 엔진(engine.py)을 API로 감싸고, frontend/ 정적 파일을 서빙한다.
 """
 import os
@@ -14,7 +14,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, 'frontend')
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 
-app = FastAPI(title="K-Supply Shield API")
+app = FastAPI(title="K-CESS API")
 
 
 class NoCacheStaticFiles(StaticFiles):

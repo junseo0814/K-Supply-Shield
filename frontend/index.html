@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>K-Supply Shield</title>
+<title>K-CESS</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <link rel="stylesheet" href="/static/styles.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -13,8 +13,12 @@
 <!-- ───────────── 로그인 화면 ───────────── -->
 <div class="login-screen" id="login-screen">
   <div class="login-card">
-    <img class="login-logo" src="/static/assets/motie-logo-stacked.png" alt="산업통상부">
-    <div class="login-title">K-Supply Shield</div>
+    <div class="login-logo-row">
+      <img class="login-logo" src="/static/assets/motie-logo-stacked.png" alt="산업통상부">
+      <span class="login-logo-divider" aria-hidden="true"></span>
+      <img class="login-logo login-logo-kcess" src="/static/assets/kcess-logo.png" alt="K-CESS">
+    </div>
+    <div class="login-title">K-CESS</div>
     <div class="login-sub">핵심광물 공급망 충격 시뮬레이터 관리자 로그인</div>
     <form class="login-form" id="login-form">
       <div class="login-field">
@@ -41,7 +45,8 @@
   <!-- ───────────── 모바일 상단바 ───────────── -->
   <div class="mobile-topbar" id="mobile-topbar">
     <img class="mobile-topbar-logo" src="/static/assets/motie-logo-horizontal.png" alt="산업통상부">
-    <span class="mobile-topbar-title">K-Supply Shield</span>
+    <img class="mobile-topbar-logo mobile-topbar-logo-kcess" src="/static/assets/kcess-logo.png" alt="K-CESS">
+    <span class="mobile-topbar-title">K-CESS</span>
     <button type="button" class="logout-icon-btn" id="logout-icon-btn" aria-label="로그아웃하기" style="margin-left:auto">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 17l5-5-5-5M20 12H9M12 3H5a2 2 0 00-2 2v14a2 2 0 002 2h7"/></svg>
     </button>
@@ -63,7 +68,8 @@
       <div class="top-nav-brand">
         <img class="top-nav-logo" src="/static/assets/motie-logo-horizontal.png" alt="산업통상부">
         <span class="top-nav-divider" aria-hidden="true"></span>
-        <span class="top-nav-title"><span class="top-nav-title-main">K-Supply</span><span class="top-nav-title-sub">Shield</span></span>
+        <img class="top-nav-logo top-nav-logo-kcess" src="/static/assets/kcess-logo.png" alt="K-CESS">
+        <span class="top-nav-title"><span class="top-nav-title-main">K-CESS</span></span>
       </div>
       <nav class="top-nav-menu" aria-label="주요 화면 전환">
         <button type="button" data-view="dashboard">공급망 현황</button>
@@ -84,7 +90,7 @@
 
     <!-- 인쇄 시에만 표시되는 공문서 양식 리포트 (재시험 관련 방안 조사 보고 양식 기준) -->
     <div class="print-report" id="print-report">
-      <div class="report-banner"><span id="report-title">K-Supply Shield 공급망 충격 시뮬레이션 보고</span></div>
+      <div class="report-banner"><span id="report-title">K-CESS 공급망 충격 시뮬레이션 보고</span></div>
       <div class="report-meta" id="report-meta"></div>
       <div id="report-body"></div>
     </div>
@@ -558,7 +564,7 @@
 
     <footer class="app-footer">
       <div class="app-footer-address">
-        <b>산업통상부</b> 핵심광물 공급망 관리시스템 (K-Supply Shield)<br>
+        <b>산업통상부</b> 핵심광물 공급망 관리시스템 (K-CESS)<br>
         세종특별자치시 정부2청사로 13 · 대표전화 044-000-0000
       </div>
       <div class="app-footer-links">

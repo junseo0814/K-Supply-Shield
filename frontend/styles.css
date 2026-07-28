@@ -1,4 +1,4 @@
-/* K-Supply Shield — FTA강국,KOREA 포털 톤 재도장 (design_handoff_ksupply_shield 2차 핸드오프 이식)
+/* K-CESS — FTA강국,KOREA 포털 톤 재도장 (design_handoff_ksupply_shield 2차 핸드오프 이식)
    실제 데이터/계산 로직은 backend API에서, 시각 언어(색·간격·플랫 디자인)는 핸드오프 스펙을 그대로 이식.
    토큰(색/radius/shadow)만 교체해도 대부분의 카드·버튼·테이블이 자동으로 새 톤을 상속하도록 구성. */
 :root {
@@ -624,7 +624,10 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   gap: 6px;
   box-sizing: border-box;
 }
-.login-logo { height: 100px; width: auto; margin-bottom: 18px; }
+.login-logo-row { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
+.login-logo { height: 100px; width: auto; margin-bottom: 0; }
+.login-logo-kcess { height: 88px; }
+.login-logo-divider { width: 1px; height: 60px; background: var(--border-strong); display: block; }
 .login-title { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; color: var(--text-primary); }
 .login-sub { font-size: 13px; color: var(--text-secondary); margin-bottom: 26px; text-align: center; }
 .login-form { width: 100%; display: flex; flex-direction: column; gap: 12px; }
@@ -757,6 +760,7 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   cursor: pointer;
 }
 .top-nav-logo { height: 28px; width: auto; display: block; }
+.top-nav-logo-kcess { height: 38px; }
 .top-nav-divider { width: 1px; height: 30px; background: var(--border-strong); display: block; }
 .top-nav-title {
   font-size: 22px;
@@ -1304,6 +1308,7 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
     z-index: 30;
   }
   .mobile-topbar-logo { height: 20px; width: auto; flex-shrink: 0; }
+  .mobile-topbar-logo-kcess { height: 26px; }
   .mobile-topbar-title { font-size: 14px; font-weight: 800; white-space: nowrap; }
 
   .mineral-chip-trigger {

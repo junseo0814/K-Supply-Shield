@@ -1,5 +1,5 @@
 """
-K-Supply Shield 계산 엔진
+K-CESS 계산 엔진
 app.py(Streamlit)에서 사용하던 레온티에프 역행렬 기반 파급 계산 로직을 그대로 이식.
 Streamlit 의존성 없이 순수 Python/pandas만 사용한다.
 """
