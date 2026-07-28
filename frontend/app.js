@@ -1404,16 +1404,21 @@ function renderReportsList() {
 }
 
 // ── 랜딩 화면: 유관기관 바로가기 캐러셀 ───────────────────
+// 국가자원안보전략센터/산업통상부 무역안보과는 별도 대국민 사이트가 없어 산업통상부 홈페이지로 연결.
 const CAROUSEL_PARTNERS = [
-  "한국자원공사", "조달청", "KOMIS 광물자원정보",
-  "국가자원안보전략센터", "산업통상부 무역안보과", "한국무역보험공사",
+  { name: "한국광해광업공단", url: "https://www.komir.or.kr" },
+  { name: "조달청", url: "https://www.pps.go.kr" },
+  { name: "KOMIS 광물자원정보", url: "https://www.komis.or.kr" },
+  { name: "국가자원안보전략센터", url: "https://www.motir.go.kr" },
+  { name: "산업통상부 무역안보과", url: "https://www.motir.go.kr" },
+  { name: "한국무역보험공사", url: "https://www.ksure.or.kr" },
 ];
 const carouselState = { index: 0, paused: false, timer: null };
 function renderCarousel() {
   const n = CAROUSEL_PARTNERS.length;
   const visible = [0, 1, 2, 3].map((i) => CAROUSEL_PARTNERS[(carouselState.index + i) % n]);
-  document.getElementById("landing-carousel-track").innerHTML = visible.map((name) =>
-    `<div class="carousel-item">${name}</div>`
+  document.getElementById("landing-carousel-track").innerHTML = visible.map((p) =>
+    `<a class="carousel-item" href="${p.url}" target="_blank" rel="noopener noreferrer">${p.name}</a>`
   ).join("");
   document.getElementById("carousel-toggle").textContent = carouselState.paused ? "재생하기" : "정지하기";
 }

@@ -962,7 +962,11 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   font-size: 12px;
   font-weight: 600;
   color: var(--text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
 }
+.carousel-item:hover { background: var(--accent-tint); border-color: var(--accent-border); }
 
 /* ── Print-only report (화면에는 숨김, 인쇄 시에만 렌더) ──
    출처: 재시험_관련_방안_조사_보고-0506_수정.hwp 양식
