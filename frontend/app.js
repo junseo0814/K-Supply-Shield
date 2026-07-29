@@ -1365,26 +1365,6 @@ function renderDashboardAlert() {
   }
 }
 
-function renderDetectCompare() {
-  const el = document.getElementById("detect-compare");
-  if (!el || !state.komis.length) return;
-  const first = state.komis[0];
-  const last = state.komis[state.komis.length - 1];
-  const changePct = (Number(last["희소금속지수"]) / Number(first["희소금속지수"]) - 1) * 100;
-  el.innerHTML = `
-    <div class="detect-box muted">
-      <div class="detect-box-title">기존 방식 — 관세청 수출입 통계</div>
-      <div class="detect-box-value">2~4주 지연 반영</div>
-      <div class="detect-box-desc">중국이 당일 수출을 통제해도 통관 통계에는 최소 2주~1개월 후에야 반영됨 (2021 요소수 대란 사례)</div>
-    </div>
-    <div class="detect-arrow">→</div>
-    <div class="detect-box accent">
-      <div class="detect-box-title">K-CESS — KOMIS 연동</div>
-      <div class="detect-box-value">${last["연월"]} 최신 반영</div>
-      <div class="detect-box-desc">KOMIS 광물종합지수는 매주 갱신 · 희소금속지수 12개월 변화율 ${fmtPct(changePct)} 즉시 확인 가능</div>
-    </div>`;
-}
-
 function renderDashboardKPI() {
   const minerals = Object.values(state.minerals);
   const total = minerals.length;
@@ -1507,7 +1487,6 @@ function renderDashboardPriority(scan) {
 function renderDashboard() {
   if (!state.mineralKey) return;
   renderDashboardAlert();
-  renderDetectCompare();
   renderDashboardKPI();
   if (!state.dashboardScan) loadDashboardScan();
   if (state.kotraNews === null) loadKotraNews();
