@@ -67,6 +67,7 @@ const state = {
   targetDays: 45,
   stockpileResult: null,
   industryExpanded: false, // 모바일: 산업별 파급 손실 목록 전체 펼침 여부
+  dashboardScan: null, // 실시간 관제 — 9개 광물 전체 자동 스캔 결과 (loadDashboardScan)
 
   // 충격 시뮬레이터 좌측 패널 — ②충격유형/④지속기간/⑤대상국가 (분류·기록용, 레온티에프 계산에는 영향 없음)
   simShockType: "export",
@@ -1299,17 +1300,6 @@ function setupDashboard() {
     if (e.data && e.data.type === "countryClick") renderCountryPanel(e.data);
   });
 
-  document.getElementById("report-teasers").innerHTML = state.reportTeasers.map((r) => `
-    <button type="button" class="color-block-card c-${r.color}" data-view="reports">
-      <div class="color-block-card-title">${r.title}</div>
-      <div class="color-block-card-desc">${r.desc}</div>
-    </button>`).join("");
-  document.getElementById("report-teasers").addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-view]");
-    if (!btn) return;
-    window.location.href = VIEW_PATHS[btn.dataset.view] || "/";
-  });
-
   state.dashboardAlertCat = "supply";
   renderAlertsList();
 }
@@ -1393,29 +1383,123 @@ function renderDashboardKPI() {
   const minerals = Object.values(state.minerals);
   const total = minerals.length;
   const riskCount = minerals.filter((m) => m.shock_example >= 50).length;
-  // MOCK — 실 데이터 연동 필요 (금일 조달 요청 건수·공급망 종합점수는 백엔드 집계 지표 부재로 임시값)
-  const mockProcurementToday = 3;
-  const supplyScore = Math.max(0, Math.round(100 - (riskCount / Math.max(total, 1)) * 60));
+  const depAlertCount = COUNTRY_DEPENDENCY.filter((c) => c.dependency >= DEPENDENCY_ALERT_THRESHOLD).length;
+  const scan = state.dashboardScan || [];
+  const avgDays = scan.length
+    ? Math.round(scan.reduce((sum, r) => sum + r.stock.coverage_days, 0) / scan.length)
+    : null;
+  const lastKomis = state.komis.length ? state.komis[state.komis.length - 1]["연월"] : "-";
   const items = [
     ["관리 광물 수", `${total}종`, "var(--primary)"],
     ["위험 광물 수", `${riskCount}종`, "var(--danger)"],
-    ["현재 설정 비축일수", `${state.stockDays}일`, "var(--multiplier-blue)"],
-    ["활성 비교 시나리오", `${state.compareChecked.size}건`, "var(--success)"],
-    ["금일 조달 요청 (mock)", `${mockProcurementToday}건`, "var(--warning)"],
-    ["공급망 종합점수 (mock)", `${supplyScore}점`, "var(--primary)"],
+    ["의존도 임계값(65%) 초과국", `${depAlertCount}개국`, "var(--warning)"],
+    ["평균 비축일수", avgDays === null ? "계산 중" : `${avgDays}일`, "var(--multiplier-blue)"],
+    ["KOMIS 최근 갱신", lastKomis, "var(--success)"],
   ];
   document.getElementById("dashboard-kpi").innerHTML = items.map(([label, val, color]) => `
     <div class="kpi-card" style="--kpi-color:${color}">
       <div class="kpi-label">${label}</div>
       <div class="kpi-value">${val}</div>
     </div>`).join("");
+  document.getElementById("dashboard-last-update").textContent = `KOMIS 최근 갱신 ${lastKomis}`;
+}
+
+// 9개 광물 전체를 각자의 기본 공급제한율(shock_example)로 자동 시뮬레이션 — 사용자가
+// 광물을 고르지 않아도 "지금 가장 위험한 광물이 무엇인지"를 상시 보여주기 위한 관제 스캔.
+async function loadDashboardScan() {
+  const keys = Object.keys(state.minerals);
+  const scan = await Promise.all(keys.map(async (key) => {
+    const m = state.minerals[key];
+    const simParams = new URLSearchParams({ mineral: key, restriction_pct: m.shock_example, korea_import_bn: m.korea_import_bn });
+    const stockParams = new URLSearchParams({
+      mineral: key, restriction_pct: m.shock_example, korea_import_bn: m.korea_import_bn,
+      days_stock: 45, daily_cons_ton: 500, release_pct: 50, import_cost: 0.5, target_days: 60,
+    });
+    const [sim, stock] = await Promise.all([
+      fetchJSON(`${API}/api/simulate?${simParams}`),
+      fetchJSON(`${API}/api/stockpile?${stockParams}`),
+    ]);
+    return { key, m, sim, stock };
+  }));
+  state.dashboardScan = scan;
+  renderDashboardKPI();
+  renderDashboardScanList(scan);
+  renderDashboardPriority(scan);
+}
+
+function renderDashboardScanList(scan) {
+  const sorted = [...scan].sort((a, b) => b.sim.total_prod - a.sim.total_prod).slice(0, 5);
+  const maxVal = sorted.length ? sorted[0].sim.total_prod : 1;
+  document.getElementById("dashboard-scan-list").innerHTML = sorted.map(({ key, sim }) => {
+    const shortName = key.replace(/\s*\(.*\)/, "");
+    const color = sim.risk_level === "HIGH" ? "var(--danger)" : sim.risk_level === "MEDIUM" ? "var(--warning)" : "var(--success)";
+    return `
+      <div class="industry-row">
+        <div class="industry-name">${shortName}</div>
+        <div class="industry-track"><div class="industry-bar" style="width:${Math.max(4, (sim.total_prod / maxVal) * 100).toFixed(0)}%; background:${color}"></div></div>
+        <div class="industry-value">${fmt(sim.total_prod, 2)}조 <span class="risk-badge ${sim.risk_level}">${sim.risk_level}</span></div>
+      </div>`;
+  }).join("");
+}
+
+// 각 광물의 방출 우선순위(/api/stockpile priority)는 모두 같은 '광산품' 유발계수 열을
+// 광물별 shock_trillion으로 스케일한 값이라, 위험 광물(공급제한 50%↑)들의 산업별
+// 생산·고용손실을 합산해도 유효한 종합 우선순위가 된다.
+function renderDashboardPriority(scan) {
+  const risky = scan.filter(({ m }) => m.shock_example >= 50);
+  const merged = {};
+  risky.forEach(({ stock }) => {
+    stock.priority.forEach((p) => {
+      if (!merged[p.industry]) merged[p.industry] = { industry: p.industry, prod_loss: 0, emp_loss: 0 };
+      merged[p.industry].prod_loss += p.prod_loss;
+      merged[p.industry].emp_loss += p.emp_loss;
+    });
+  });
+  const list = Object.values(merged);
+  const priorityRowsEl = document.getElementById("dashboard-priority-rows");
+  const priorityBarsEl = document.getElementById("dashboard-priority-bars");
+  if (!list.length) {
+    priorityRowsEl.innerHTML = `<div class="metric-sub">현재 공급제한 50% 이상인 광물이 없어 우선순위 대상이 없습니다.</div>`;
+    priorityBarsEl.innerHTML = "";
+    return;
+  }
+
+  const maxProd = Math.max(...list.map((x) => x.prod_loss), 1);
+  const maxEmp = Math.max(...list.map((x) => x.emp_loss), 1);
+  list.forEach((x) => { x.score = (x.prod_loss / maxProd) * 0.6 + (x.emp_loss / maxEmp) * 0.4; });
+  const sorted = list.sort((a, b) => b.score - a.score).slice(0, 8);
+  sorted.forEach((x, i) => { x.rank = i + 1; });
+
+  priorityRowsEl.innerHTML = sorted.map((p) => {
+    const tag = p.rank <= 2 ? '<span class="priority-tag urgent">긴급</span>'
+      : p.rank <= 5 ? '<span class="priority-tag high">우선</span>'
+      : '<span class="priority-tag normal">일반</span>';
+    return `
+      <div class="priority-row">
+        <span class="priority-rank">#${p.rank}</span>${tag}
+        <span class="priority-name">${p.industry}</span>
+        <span class="priority-detail">생산손실 ${fmt(p.prod_loss, 3)}조 | 고용 ${Math.round(p.emp_loss).toLocaleString("ko-KR")}명</span>
+      </div>`;
+  }).join("") + `<div class="metric-sub" style="margin-top:8px">대상: ${risky.length}개 광물(공급제한 50%↑) 종합 · 종합점수 = 생산유발계수(60%) + 고용유발계수(40%) 가중 산출</div>`;
+
+  const topScore = sorted[0].score || 1;
+  priorityBarsEl.innerHTML = sorted.map((p) => {
+    const color = p.rank <= 2 ? "var(--danger)" : p.rank <= 5 ? "var(--warning)" : "var(--multiplier-blue)";
+    return `
+      <div class="industry-row">
+        <div class="industry-name">${p.industry}</div>
+        <div class="industry-track"><div class="industry-bar" style="width:${Math.max(4, (p.score / topScore) * 100).toFixed(0)}%; background:${color}"></div></div>
+        <div class="industry-value">${p.score.toFixed(2)}</div>
+      </div>`;
+  }).join("");
 }
 
 function renderDashboard() {
   if (!state.mineralKey) return;
   renderDashboardAlert();
-  renderDashboardKPI();
   renderDetectCompare();
+  renderDashboardKPI();
+  if (!state.dashboardScan) loadDashboardScan();
 }
 
 // ── ⑤ 정책·보고서 (data/publications.csv, data/report_teasers.csv 직접 편집 관리) ──

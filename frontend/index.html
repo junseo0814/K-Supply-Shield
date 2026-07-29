@@ -72,7 +72,7 @@
         <span class="top-nav-title"><span class="top-nav-title-main">K-CESS</span></span>
       </div>
       <nav class="top-nav-menu" aria-label="주요 화면 전환">
-        <button type="button" data-view="dashboard">공급망 현황</button>
+        <button type="button" data-view="dashboard">실시간 관제</button>
         <button type="button" data-view="simulate">충격 시뮬레이터</button>
         <button type="button" data-view="stockpile">비축·조달</button>
         <button type="button" data-view="compare">시나리오 비교</button>
@@ -95,8 +95,13 @@
       <div id="report-body"></div>
     </div>
 
-    <!-- ═══════ VIEW 0: 통합 대시보드 (공급망 현황, 로그인 직후 진입) ═══════ -->
+    <!-- ═══════ VIEW 0: 실시간 관제 (구 공급망 현황, 로그인 직후 진입) ═══════ -->
     <div id="view-dashboard" class="dashboard">
+      <div class="page-header-bar" id="dashboard-header-bar">
+        <div class="page-header-title">실시간 관제</div>
+        <div class="page-header-right"><div id="dashboard-last-update"></div></div>
+      </div>
+
       <div class="dashboard-alert" id="dashboard-alert" role="alert" aria-live="polite">
         <div class="dashboard-alert-text" id="dashboard-alert-text"></div>
         <button type="button" class="dashboard-alert-cta" data-view="simulate">바로가기</button>
@@ -126,9 +131,27 @@
         <div class="kpi-strip" id="dashboard-kpi"></div>
       </section>
 
-      <section>
-        <div class="dashboard-section-title">조기 감지 체계</div>
-        <div class="detect-compare" id="detect-compare"></div>
+      <div class="dashboard-split">
+        <section>
+          <div class="dashboard-section-title">조기 감지 체계</div>
+          <div class="detect-compare" id="detect-compare"></div>
+        </section>
+        <section>
+          <div class="dashboard-section-title">전체 광물 자동 스캔</div>
+          <div class="block-meta" style="margin:-6px 0 10px">각 광물 기본 공급제한율(shock_example) 기준 자동 계산 · 생산손실 상위 5개</div>
+          <div class="industry-list" id="dashboard-scan-list"></div>
+        </section>
+      </div>
+
+      <section class="block">
+        <div class="block-head">
+          <div class="block-title">방출 우선순위 자동산출</div>
+          <div class="block-meta">공급제한 50% 이상 광물 종합 · 생산유발(60%)+고용유발(40%)</div>
+        </div>
+        <div class="stockpile-grid-a">
+          <div id="dashboard-priority-rows"></div>
+          <div class="industry-list" id="dashboard-priority-bars"></div>
+        </div>
       </section>
 
       <section class="alerts-card">
@@ -140,11 +163,6 @@
           <button type="button" data-cat="inbound">입고 현황</button>
         </div>
         <div class="alerts-list" id="alerts-list"></div>
-      </section>
-
-      <section>
-        <div class="dashboard-section-title">정책·보고서</div>
-        <div class="color-block-grid" id="report-teasers"></div>
       </section>
 
       <div class="landing-carousel">
@@ -582,7 +600,7 @@
   <nav class="mobile-tabbar" id="mobile-tabbar" aria-label="주요 화면 전환">
     <button type="button" data-view="dashboard">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
-      <span>현황</span>
+      <span>관제</span>
     </button>
     <button type="button" data-view="simulate" aria-current="false">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M10 19V9M16 19v-6M22 19H2"/></svg>

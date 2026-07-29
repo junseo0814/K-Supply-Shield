@@ -888,8 +888,17 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
 
 .kpi-strip {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
+}
+.dashboard-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .dashboard-split { grid-template-columns: 1fr; }
 }
 .kpi-card {
   background: var(--surface);
