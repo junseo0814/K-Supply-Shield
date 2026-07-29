@@ -144,6 +144,94 @@ const SIM_COUNTRIES = [
   { key: "australia", label: "호주" }, { key: "philippines", label: "필리핀" },
   { key: "indonesia", label: "인도네시아" }, { key: "other", label: "기타" },
 ];
+// "⑤ 대상 국가/지역" 체크박스 key → ISO 3166-1 numeric (altsupply-map.html 지도 매칭용)
+const SIM_COUNTRY_ISO = { china: 156, congo: 180, chile: 152, australia: 36, philippines: 608, indonesia: 360 };
+
+// 광물별 세계 주요 생산국·점유율(%) — USGS Mineral Commodity Summaries 2026(2026.5 ver.1.3)
+// 원문 PDF의 "World Mine Production" 표(2025년 잠정치)를 직접 열어 확인한 실측 비중이다
+// (archive/데이터셋/5. USGS MCS 2026/mcs2026.pdf). "대체 공급국 제안" 지도/카드에서,
+// 사용자가 ⑤에서 충격 대상국으로 체크한 나라를 뺀 나머지를 대체 수입처 후보로 보여주는
+// 데 쓴다. 계산 로직에는 영향 없음(참고용 정보).
+// share가 null인 항목은 "채굴 점유율"이 아니라 "정제·가공 공급망상 대안"을 뜻한다
+// (예: 갈륨은 채굴은 중국 독점이지만 고순도 정제는 일본이 비중국 1위). 게르마늄은
+// USGS도 국가별 생산량을 공개하지 않아(비공개 사유 원문 명시) 정확한 채굴 비중을
+// 알 수 없으므로, 정제·재활용 처리국(문헌상 확인되는 나라들)만 참고용으로 표시한다.
+const MINERAL_PRODUCERS = {
+  "흑연 (Graphite)": [
+    { iso: 156, name: "중국", flag: "🇨🇳", share: 78 },
+    { iso: 450, name: "마다가스카르", flag: "🇲🇬", share: 4 },
+    { iso: 834, name: "탄자니아", flag: "🇹🇿", share: 4 },
+    { iso: 76, name: "브라질", flag: "🇧🇷", share: 4 },
+    { iso: 508, name: "모잠비크", flag: "🇲🇿", share: 3 },
+    { iso: 643, name: "러시아", flag: "🇷🇺", share: 1 },
+  ],
+  "리튬 (Lithium)": [
+    { iso: 36, name: "호주", flag: "🇦🇺", share: 32 },
+    { iso: 156, name: "중국", flag: "🇨🇳", share: 21 },
+    { iso: 152, name: "칠레", flag: "🇨🇱", share: 19 },
+    { iso: 716, name: "짐바브웨", flag: "🇿🇼", share: 10 },
+    { iso: 32, name: "아르헨티나", flag: "🇦🇷", share: 8 },
+    { iso: 76, name: "브라질", flag: "🇧🇷", share: 4 },
+  ],
+  "코발트 (Cobalt)": [
+    { iso: 180, name: "콩고민주공화국", flag: "🇨🇩", share: 74 },
+    { iso: 360, name: "인도네시아", flag: "🇮🇩", share: 14 },
+    { iso: 643, name: "러시아", flag: "🇷🇺", share: 2 },
+    { iso: 450, name: "마다가스카르", flag: "🇲🇬", share: 1 },
+    { iso: 608, name: "필리핀", flag: "🇵🇭", share: 1 },
+    { iso: 36, name: "호주", flag: "🇦🇺", share: 1 },
+  ],
+  "니켈 (Nickel)": [
+    { iso: 360, name: "인도네시아", flag: "🇮🇩", share: 67 },
+    { iso: 608, name: "필리핀", flag: "🇵🇭", share: 7 },
+    { iso: 643, name: "러시아", flag: "🇷🇺", share: 5 },
+    { iso: 540, name: "뉴칼레도니아", flag: "🇳🇨", share: 4 },
+    { iso: 124, name: "캐나다", flag: "🇨🇦", share: 4 },
+    { iso: 156, name: "중국", flag: "🇨🇳", share: 3 },
+  ],
+  "망간 (Manganese)": [
+    { iso: 710, name: "남아공", flag: "🇿🇦", share: 38 },
+    { iso: 266, name: "가봉", flag: "🇬🇦", share: 25 },
+    { iso: 288, name: "가나", flag: "🇬🇭", share: 10 },
+    { iso: 36, name: "호주", flag: "🇦🇺", share: 8 },
+    { iso: 76, name: "브라질", flag: "🇧🇷", share: 4 },
+    { iso: 356, name: "인도", flag: "🇮🇳", share: 4 },
+  ],
+  "희토류 (Rare Earths)": [
+    { iso: 156, name: "중국", flag: "🇨🇳", share: 69 },
+    { iso: 840, name: "미국", flag: "🇺🇸", share: 13 },
+    { iso: 36, name: "호주", flag: "🇦🇺", share: 7 },
+    { iso: 104, name: "미얀마", flag: "🇲🇲", share: 6 },
+    { iso: 704, name: "베트남", flag: "🇻🇳", share: 1 },
+  ],
+  "텅스텐 (Tungsten)": [
+    { iso: 156, name: "중국", flag: "🇨🇳", share: 79 },
+    { iso: 704, name: "베트남", flag: "🇻🇳", share: 4 },
+    { iso: 398, name: "카자흐스탄", flag: "🇰🇿", share: 3 },
+    { iso: 643, name: "러시아", flag: "🇷🇺", share: 2 },
+    { iso: 68, name: "볼리비아", flag: "🇧🇴", share: 2 },
+    { iso: 646, name: "르완다", flag: "🇷🇼", share: 2 },
+  ],
+  // USGS MCS 2026 원문: "Global germanium refinery production data were limited... China
+  // being the leading producer." — 국가별 %가 공개되지 않아 share를 매기지 않고, 문헌상
+  // 정제·재활용이 이뤄지는 것으로 확인된 나라만 참고용으로 나열한다.
+  "게르마늄 (Germanium)": [
+    { iso: 156, name: "중국", flag: "🇨🇳", share: null, note: "세계 최대 생산국(국가별 정확한 비중은 USGS도 비공개)" },
+    { iso: 124, name: "캐나다", flag: "🇨🇦", share: null, note: "정제·재활용 처리국" },
+    { iso: 643, name: "러시아", flag: "🇷🇺", share: null, note: "정제·재활용 처리국" },
+    { iso: 56, name: "벨기에", flag: "🇧🇪", share: null, note: "정제·재활용 처리국" },
+    { iso: 276, name: "독일", flag: "🇩🇪", share: null, note: "정제·재활용 처리국" },
+  ],
+  // 채굴 기준 중국 99% 독점(대체 채굴국 사실상 없음)이지만, 한국이 실제 수입하는 건
+  // 채굴 원광이 아니라 고순도 정제 갈륨이라 정제 능력 기준 대안은 존재한다.
+  "갈륨 (Gallium)": [
+    { iso: 156, name: "중국", flag: "🇨🇳", share: 99 },
+    { iso: 643, name: "러시아", flag: "🇷🇺", share: 1 },
+    { iso: 392, name: "일본", flag: "🇯🇵", share: null, note: "고순도 정제 비중국 1위 (Dowa Holdings)" },
+    { iso: 124, name: "캐나다", flag: "🇨🇦", share: null, note: "고순도 정제 주요국" },
+    { iso: 36, name: "호주", flag: "🇦🇺", share: null, note: "JOGMEC·Alcoa 신규 정제 프로젝트 추진 중 — 2028년 가동 목표, 아직 미가동" },
+  ],
+};
 
 const RADAR_CATEGORIES = ["조달 속도", "비용 효율", "물량 충분성", "공급 안정성", "지속 가능성"];
 const RADAR_OPTIONS = [
@@ -963,6 +1051,7 @@ function renderAll(r) {
   renderSimKpiGrid(r);
   renderSimLineChart(r);
   renderSimHeatmapTable(r);
+  renderAltSupplyMap();
   renderSimPathway(r);
   renderSimInsightPanel(r);
   renderDdaySelect();
@@ -970,6 +1059,37 @@ function renderAll(r) {
   renderDdayCards(r);
   renderIndustryList(r);
   updatePrintHeader();
+}
+
+// 시뮬레이션 실행 시점의 ⑤ 충격 대상국(체크박스)을 "위험국"으로, 그 광물의 나머지
+// 주요 생산국을 "대체 수입 후보"로 지도(altsupply-map.html)와 카드 목록에 함께 보여준다.
+function renderAltSupplyMap() {
+  const producers = MINERAL_PRODUCERS[state.mineralKey] || [];
+  const crisisIsoSet = new Set(
+    Object.keys(state.simCountries)
+      .filter((k) => state.simCountries[k] && SIM_COUNTRY_ISO[k])
+      .map((k) => SIM_COUNTRY_ISO[k])
+  );
+  const crisis = producers.filter((p) => crisisIsoSet.has(p.iso));
+  const alt = producers.filter((p) => !crisisIsoSet.has(p.iso)).slice(0, 5);
+
+  const frame = document.getElementById("altsupply-map-frame");
+  if (frame.contentWindow) frame.contentWindow.postMessage({ type: "setAltData", crisis, alt }, "*");
+
+  const cardsEl = document.getElementById("altsupply-cards");
+  if (!alt.length) {
+    cardsEl.innerHTML = `<div class="altmap-empty">${
+      crisis.length ? "이 광물은 대체 공급처가 사실상 없어 재자원화·비축 확대 등 다른 대응이 필요합니다." : "충격 대상국 외 주요 생산국 정보가 없습니다."
+    }</div>`;
+    return;
+  }
+  const shortName = state.mineralKey.replace(/\s*\(.*\)/, "");
+  cardsEl.innerHTML = alt.map((c) => `
+    <div class="altmap-card">
+      <span class="altmap-card-name">${c.flag} ${c.name}</span>
+      <span class="altmap-card-share">${c.share != null ? `세계 생산 ${c.share}%` : "정제·가공 대안"}</span>
+      <span class="altmap-card-note">${c.note || `이 나라에서 ${shortName} 수입 비중을 확대해 위험을 완화하는 방안을 검토하세요.`}</span>
+    </div>`).join("");
 }
 
 function renderSimKpiGrid(r) {
