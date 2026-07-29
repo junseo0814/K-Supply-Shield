@@ -1141,11 +1141,15 @@ function renderIndustryList(r) {
 
   document.getElementById("industry-list").innerHTML = data.map((d) => {
     const widthPct = Math.max(4, (d.prod_loss / maxVal) * 100).toFixed(0);
+    // 광산품은 KOSIS 광업제조업조사(2019, 전국 광업 05~08) 총생산액 대비 비중을 함께 표시
+    const miningShare = (d.sector === "광산품" && r.mining_sector_total_prod_trillion)
+      ? ` <span class="industry-share">(광업 산업 총생산의 ${fmtPct(d.prod_loss / r.mining_sector_total_prod_trillion * 100).replace("+", "")})</span>`
+      : "";
     return `
       <div class="industry-row">
         <div class="industry-name">${d.sector}</div>
         <div class="industry-track"><div class="industry-bar" style="width:${widthPct}%"></div></div>
-        <div class="industry-value">${fmt(d.prod_loss)}조</div>
+        <div class="industry-value">${fmt(d.prod_loss)}조${miningShare}</div>
       </div>`;
   }).join("");
 

@@ -78,6 +78,7 @@ def simulate(
         "risk_level": risk_level,
         "cascade": cascade,
         "sector_impacts": engine.sector_impacts(shock_trillion),
+        "mining_sector_total_prod_trillion": engine.MINING_SECTOR_TOTAL_PROD_TRILLION,
     }
 
 
