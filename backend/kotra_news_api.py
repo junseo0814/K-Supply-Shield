@@ -23,7 +23,7 @@ ENDPOINT = "https://apis.data.go.kr/B410001/shortBreakingNews/shortBreakingNews"
 # K-CESS 7대 핵심광물 + 게르마늄/갈륨 관련 정책·공급망 뉴스를 잡기 위한 기본 검색 키워드.
 DEFAULT_KEYWORDS = [
     "희토류", "리튬", "코발트", "니켈", "망간", "흑연", "텅스텐", "게르마늄", "갈륨",
-    "수출통제", "핵심광물", "공급망",
+    "수출통제", "핵심광물", "공급망", "광산",
 ]
 
 
