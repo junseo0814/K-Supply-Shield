@@ -11,6 +11,7 @@ search1은 제목 키워드 필터로 보인다(공식 문서 미확인 — 응�
 """
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 import requests
 from dotenv import load_dotenv
@@ -76,16 +77,21 @@ def parse_items(raw_json):
     ]
 
 
+def _fetch_one(kw, rows_per_keyword):
+    try:
+        return parse_items(fetch_raw(search1=kw, num_of_rows=rows_per_keyword))
+    except Exception:
+        return []
+
+
 def fetch_recent_by_keywords(keywords=None, rows_per_keyword=10):
-    """여러 키워드로 검색해 중복(id 기준) 제거 후 날짜 내림차순으로 합쳐 반환한다."""
+    """여러 키워드로 병렬 검색해 중복(id 기준) 제거 후 날짜 내림차순으로 합쳐 반환한다.
+    키워드별 API 호출이 순차 실행 시 10초 이상 걸려 스레드풀로 병렬화했다."""
     keywords = keywords or DEFAULT_KEYWORDS
     seen = {}
-    for kw in keywords:
-        try:
-            raw = fetch_raw(search1=kw, num_of_rows=rows_per_keyword)
-            items = parse_items(raw)
-        except Exception:
-            continue
+    with ThreadPoolExecutor(max_workers=len(keywords)) as ex:
+        results = ex.map(lambda kw: _fetch_one(kw, rows_per_keyword), keywords)
+    for items in results:
         for it in items:
             seen[it["id"]] = it
     return sorted(seen.values(), key=lambda x: x["date"] or "", reverse=True)

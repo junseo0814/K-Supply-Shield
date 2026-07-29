@@ -3,12 +3,13 @@ K-CESS FastAPI 백엔드
 계산 엔진(engine.py)을 API로 감싸고, frontend/ 정적 파일을 서빙한다.
 """
 import os
+import time
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from . import engine
+from . import engine, kotra_news_api
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, 'frontend')
@@ -123,6 +124,39 @@ def get_comtrade():
         return []
     df = pd.read_csv(path, encoding='utf-8-sig')
     return df.to_dict(orient='records')
+
+
+@app.get("/api/customs-snapshot")
+def get_customs_snapshot():
+    """관세청 품목별 국가별 수출입실적 API 스냅샷(scripts/refresh_customs_snapshot.py로 생성).
+    실시간 호출이 아니라, 스크립트를 재실행할 때마다 갱신되는 파일을 그대로 서빙한다."""
+    path = os.path.join(DATA_DIR, 'customs_live_snapshot.csv')
+    if not os.path.exists(path):
+        return []
+    df = pd.read_csv(path, encoding='utf-8-sig')
+    return df.to_dict(orient='records')
+
+
+_kotra_news_cache = {"data": None, "fetched_at": 0}
+KOTRA_NEWS_CACHE_TTL = 900  # 15분 — 무료 계정 일일 트래픽(10,000건) 절약 + 응답속도 확보
+
+
+@app.get("/api/kotra-news")
+def get_kotra_news():
+    """KOTRA 단신속보뉴스에서 핵심광물 키워드로 최근 뉴스를 가져온다.
+    키워드마다 API를 호출하는 구조라 매 요청마다 부르면 느려서, 서버 메모리에 15분 캐시한다."""
+    now = time.time()
+    if _kotra_news_cache["data"] is not None and now - _kotra_news_cache["fetched_at"] < KOTRA_NEWS_CACHE_TTL:
+        return _kotra_news_cache["data"]
+    try:
+        items = kotra_news_api.fetch_recent_by_keywords(rows_per_keyword=5)[:15]
+    except Exception as e:
+        if _kotra_news_cache["data"] is not None:
+            return _kotra_news_cache["data"]
+        raise HTTPException(status_code=502, detail=f"KOTRA API 호출 실패: {e}")
+    _kotra_news_cache["data"] = items
+    _kotra_news_cache["fetched_at"] = now
+    return items
 
 
 # 아래 3개는 현재 data/*.csv 직접 수기 편집으로 관리한다 (프로토타입 단계).

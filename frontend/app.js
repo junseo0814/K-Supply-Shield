@@ -52,7 +52,8 @@ const state = {
   importTrillion: 0, // 사이드바 표시 단위: 조원
   komis: [],
   comtrade: [], // UN Comtrade 對중국 수입 세부내역 (리포트 별첨 전용)
-  alerts: [], // data/alerts.csv 직접 편집 관리 (프로토타입) — 추후 실 API 연동
+  customsSnapshot: [], // 관세청 API 스냅샷 (scripts/refresh_customs_snapshot.py로 갱신)
+  kotraNews: null, // KOTRA 단신속보뉴스 — 대시보드 첫 진입 시 지연 로딩
   publications: [], // data/publications.csv 직접 편집 관리
   reportTeasers: [], // data/report_teasers.csv 직접 편집 관리
   ddayIdx: 2, // 0=D+7, 1=D+18, 2=D+40
@@ -162,11 +163,11 @@ function fmt(n, digits = 2) {
 function fmtPct(v) { return (v >= 0 ? "+" : "") + fmt(v, 1) + "%"; }
 
 async function init() {
-  const [minerals, komis, comtrade, alerts, publications, reportTeasers] = await Promise.all([
+  const [minerals, komis, comtrade, customsSnapshot, publications, reportTeasers] = await Promise.all([
     fetchJSON(`${API}/api/minerals`),
     fetchJSON(`${API}/api/komis`),
     fetchJSON(`${API}/api/comtrade`),
-    fetchJSON(`${API}/api/alerts`),
+    fetchJSON(`${API}/api/customs-snapshot`),
     fetchJSON(`${API}/api/publications`),
     fetchJSON(`${API}/api/report-teasers`),
   ]);
@@ -174,7 +175,7 @@ async function init() {
   minerals.forEach((m) => { state.minerals[m.key] = m; });
   state.komis = komis;
   state.comtrade = comtrade;
-  state.alerts = alerts;
+  state.customsSnapshot = customsSnapshot;
   state.publications = publications;
   state.reportTeasers = reportTeasers;
 
@@ -1292,20 +1293,9 @@ function setupDashboard() {
     if (frame.contentWindow) frame.contentWindow.postMessage({ type: "setMode", mode: btn.dataset.mode }, "*");
   });
 
-  document.getElementById("alert-tabs").addEventListener("click", (e) => {
-    const btn = e.target.closest("button[data-cat]");
-    if (!btn) return;
-    state.dashboardAlertCat = btn.dataset.cat;
-    document.querySelectorAll("#alert-tabs button").forEach((b) => b.classList.toggle("active", b === btn));
-    renderAlertsList();
-  });
-
   window.addEventListener("message", (e) => {
     if (e.data && e.data.type === "countryClick") renderCountryPanel(e.data);
   });
-
-  state.dashboardAlertCat = "supply";
-  renderAlertsList();
 }
 
 function renderCountryPanel(info) {
@@ -1319,13 +1309,25 @@ function renderCountryPanel(info) {
   `;
 }
 
-function renderAlertsList() {
-  const items = state.alerts.filter((a) => a.category === state.dashboardAlertCat);
-  document.getElementById("alerts-list").innerHTML = items.map((a) => `
+async function loadKotraNews() {
+  state.kotraNews = []; // 중복 호출 방지용 로딩 플래그
+  try {
+    state.kotraNews = await fetchJSON(`${API}/api/kotra-news`);
+  } catch (e) {
+    state.kotraNews = [];
+  }
+  renderKotraNews();
+}
+
+function renderKotraNews() {
+  const el = document.getElementById("alerts-list");
+  if (!state.kotraNews) { el.innerHTML = `<div class="metric-sub">뉴스를 불러오는 중...</div>`; return; }
+  if (!state.kotraNews.length) { el.innerHTML = `<div class="metric-sub">표시할 뉴스가 없습니다.</div>`; return; }
+  el.innerHTML = state.kotraNews.map((n) => `
     <div class="alert-item">
-      <span class="alert-item-time">${a.time}</span>
-      <span class="alert-item-title">${a.title}</span>
-      <span class="risk-badge ${a.risk}">${a.risk}</span>
+      <span class="alert-item-time">${n.date || "-"}</span>
+      <a class="alert-item-title" href="${n.url}" target="_blank" rel="noopener noreferrer">${n.title}</a>
+      <span class="reports-cat-badge">${n.country || "-"}</span>
     </div>`).join("");
 }
 
@@ -1393,12 +1395,16 @@ function renderDashboardKPI() {
     ? Math.round(scan.reduce((sum, r) => sum + r.stock.coverage_days, 0) / scan.length)
     : null;
   const lastKomis = state.komis.length ? state.komis[state.komis.length - 1]["연월"] : "-";
+  const lastCustoms = state.customsSnapshot.length
+    ? state.customsSnapshot.reduce((max, r) => (r.period > max ? r.period : max), state.customsSnapshot[0].period)
+    : "-";
   const items = [
     ["관리 광물 수", `${total}종`, "var(--primary)"],
     ["위험 광물 수", `${riskCount}종`, "var(--danger)"],
     ["의존도 임계값(65%) 초과국", `${depAlertCount}개국`, "var(--warning)"],
     ["평균 비축일수", avgDays === null ? "계산 중" : `${avgDays}일`, "var(--multiplier-blue)"],
     ["KOMIS 최근 갱신", lastKomis, "var(--success)"],
+    ["관세청 최신 반영월", lastCustoms, "var(--primary)"],
   ];
   document.getElementById("dashboard-kpi").innerHTML = items.map(([label, val, color]) => `
     <div class="kpi-card" style="--kpi-color:${color}">
@@ -1504,6 +1510,8 @@ function renderDashboard() {
   renderDetectCompare();
   renderDashboardKPI();
   if (!state.dashboardScan) loadDashboardScan();
+  if (state.kotraNews === null) loadKotraNews();
+  else renderKotraNews();
 }
 
 // ── ⑤ 정책·보고서 (data/publications.csv, data/report_teasers.csv 직접 편집 관리) ──

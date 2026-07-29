@@ -889,7 +889,7 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
 
 .kpi-strip {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
 }
 .dashboard-split {
@@ -935,7 +935,8 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
 }
 .alert-item:last-child { border-bottom: none; }
 .alert-item-time { font-size: 11px; color: var(--text-quaternary); white-space: nowrap; }
-.alert-item-title { flex: 1; font-size: 13px; color: var(--text-secondary); }
+.alert-item-title { flex: 1; font-size: 13px; color: var(--text-secondary); text-decoration: none; }
+a.alert-item-title:hover { color: var(--primary); text-decoration: underline; }
 
 .color-block-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .color-block-card {
