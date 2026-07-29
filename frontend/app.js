@@ -192,16 +192,12 @@ async function init() {
     updatePreview();
     updateIntensityLabel();
     flashHeaderIfHigh();
-    runSimulation();
-    runStockpile();
     saveParams();
   });
 
   document.getElementById("import-input").addEventListener("input", (e) => {
     state.importTrillion = Number(e.target.value) || 0;
     updatePreview();
-    runSimulation();
-    runStockpile();
     saveParams();
   });
 
@@ -235,8 +231,6 @@ async function init() {
     document.getElementById("import-input").value = state.importTrillion;
     updatePreview();
     updateIntensityLabel();
-    runSimulation();
-    runStockpile();
   }
   renderKomis();
   const initialView = PATH_VIEWS[window.location.pathname] || "dashboard";
@@ -800,8 +794,6 @@ function selectMineral(key) {
   updatePreview();
   updateIntensityLabel();
   renderDdaySelect();
-  runSimulation();
-  runStockpile();
   saveParams();
 }
 
