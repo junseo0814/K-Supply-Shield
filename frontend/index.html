@@ -473,31 +473,38 @@
       </div>
 
       <div class="proc-page-body">
-        <div class="scen-grid" id="scen-header-grid" style="margin-bottom:16px"></div>
-        <div class="scen-grid" id="scen-kpi-grid" style="margin-bottom:24px"></div>
-
-        <div class="panel-box-flush" style="margin-bottom:24px">
-          <div class="panel-box-flush-head">공급량 시계열 비교</div>
-          <div class="panel-box-flush-body"><canvas id="scen-line-chart" height="90"></canvas></div>
+        <div class="scen-empty-state" id="scen-empty-state" hidden>
+          저장된 시나리오가 없습니다.<br>
+          <b>충격 시뮬레이터</b> 탭에서 원하는 조건으로 시뮬레이션을 실행한 뒤 "시나리오로 저장"을 눌러 여기서 비교해보세요.
         </div>
 
-        <div class="dashboard-section-title">광물별 위험도 히트맵</div>
-        <div class="scen-grid" id="scen-heatmap-grid" style="margin-bottom:24px"></div>
+        <div id="scen-ab-section">
+          <div class="scen-grid" id="scen-header-grid" style="margin-bottom:16px"></div>
+          <div class="scen-grid" id="scen-kpi-grid" style="margin-bottom:24px"></div>
 
-        <div class="panel-box-flush" style="margin-bottom:24px">
-          <div class="panel-box-flush-head">비용 비교 (억 원)</div>
-          <div class="panel-box-flush-body"><canvas id="scen-cost-chart" height="90"></canvas></div>
+          <div class="panel-box-flush" style="margin-bottom:24px">
+            <div class="panel-box-flush-head">공급량 시계열 비교</div>
+            <div class="panel-box-flush-body"><canvas id="scen-line-chart" height="90"></canvas></div>
+          </div>
+
+          <div class="dashboard-section-title">광물별 위험도 히트맵</div>
+          <div class="scen-grid" id="scen-heatmap-grid" style="margin-bottom:24px"></div>
+
+          <div class="panel-box-flush" style="margin-bottom:24px">
+            <div class="panel-box-flush-head">비용 비교 (억 원)</div>
+            <div class="panel-box-flush-body"><canvas id="scen-cost-chart" height="90"></canvas></div>
+          </div>
+
+          <div class="panel-box-flush" style="margin-bottom:24px">
+            <div class="panel-box-flush-head">파레토 분석 (영향 산업 우선순위)</div>
+            <div class="panel-box-flush-body" id="scen-pareto-wrap"></div>
+          </div>
+
+          <div class="dashboard-section-title">종합 평가 매트릭스</div>
+          <div class="scen-grid" id="scen-radar-grid" style="margin-bottom:24px"></div>
+
+          <div class="scen-grid" id="scen-ai-grid"></div>
         </div>
-
-        <div class="panel-box-flush" style="margin-bottom:24px">
-          <div class="panel-box-flush-head">파레토 분석 (영향 산업 우선순위)</div>
-          <div class="panel-box-flush-body" id="scen-pareto-wrap"></div>
-        </div>
-
-        <div class="dashboard-section-title">종합 평가 매트릭스</div>
-        <div class="scen-grid" id="scen-radar-grid" style="margin-bottom:24px"></div>
-
-        <div class="scen-grid" id="scen-ai-grid"></div>
 
         <hr class="divider" style="margin:28px 0;">
         <div class="dashboard-section-title">전체 광물 비교 (7종)</div>

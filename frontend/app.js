@@ -89,19 +89,31 @@ const state = {
   matrixRiskFilter: "all",
   matrixData: null,
 
-  // 시나리오 비교 (A/B/C)
+  // 시나리오 비교 (A/B/C) — 충격 시뮬레이터에서 "시나리오로 저장"을 눌러야 채워진다.
   scenSelected: { A: true, B: true, C: true },
-  scenarioResults: null,
+  scenarioResults: [],
+  savedScenarios: {}, // { A: {...}, B: {...}, C: {...} } — sessionStorage에 영속화
 };
-
-// prob(발동확률)은 USGS 확률가중 GDP손실모델 방법론을 참고한 예시치 — 실제 발동확률
-// 추정은 정교한 통계모형이 필요하므로, 여기서는 최근 실제 동향(중국 수출통제 상시화 등)을
-// 반영한 시연용 근사값을 사용한다.
-const SCENARIO_DEFS = [
-  { key: "A", label: "시나리오 A", mineralKey: "희토류 (Rare Earths)", pct: 70, color: "#1B2556", shockLabel: "중국 희토류 수출통제", prob: 35 },
-  { key: "B", label: "시나리오 B", mineralKey: "니켈 (Nickel)", pct: 50, color: "#007AFF", shockLabel: "인도네시아 물류 리스크", prob: 18 },
-  { key: "C", label: "시나리오 C", mineralKey: "코발트 (Cobalt)", pct: 80, color: "#E67E22", shockLabel: "DRC 코발트 공급 중단", prob: 22 },
+// 시나리오 저장 슬롯 3개(A/B/C) — 충격 시뮬레이터에서 실행 후 저장한 결과가 여기 담긴다.
+// 슬롯당 색상만 고정하고, 광물·충격조건·확률 등은 전부 저장 시점의 실제 값을 그대로 쓴다
+// (예전처럼 미리 정해둔 가상 시나리오가 아님 — prob은 사용자가 입력한 적 없으므로 null).
+const SCENARIO_SLOTS = [
+  { key: "A", label: "시나리오 A", color: "#1B2556" },
+  { key: "B", label: "시나리오 B", color: "#007AFF" },
+  { key: "C", label: "시나리오 C", color: "#E67E22" },
 ];
+const SCENARIO_STORAGE_KEY = "ksupply_saved_scenarios";
+
+function saveScenariosToStorage() {
+  sessionStorage.setItem(SCENARIO_STORAGE_KEY, JSON.stringify(state.savedScenarios));
+}
+function loadScenariosFromStorage() {
+  try {
+    return JSON.parse(sessionStorage.getItem(SCENARIO_STORAGE_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
 
 const PROC_METHODS = [
   { key: "emergency", label: "긴급 현물" }, { key: "longterm", label: "장기 계약" },
@@ -875,6 +887,36 @@ function setupSimulatorPanel() {
     renderDurationGroup();
     renderCountryChecks();
   });
+
+  document.getElementById("sim-save-scenario-btn").addEventListener("click", () => {
+    if (!state.simResult) {
+      alert("먼저 시뮬레이션을 실행한 뒤 저장할 수 있습니다.");
+      return;
+    }
+    const saved = state.savedScenarios || {};
+    const emptySlot = SCENARIO_SLOTS.find((slot) => !saved[slot.key]);
+    if (!emptySlot) {
+      alert("이미 3개(A/B/C)가 저장되어 있습니다. 시나리오 비교 탭에서 하나를 삭제한 뒤 다시 저장해주세요.");
+      return;
+    }
+    const shortName = state.mineralKey.replace(/\s*\(.*\)/, "");
+    const shockLabel = (SHOCK_TYPES.find((t) => t.key === state.simShockType)?.label || "").replace(/\s*\(.*\)/, "");
+    saved[emptySlot.key] = {
+      key: emptySlot.key,
+      label: emptySlot.label,
+      color: emptySlot.color,
+      mineralKey: state.mineralKey,
+      pct: state.restrictionPct,
+      shockLabel: `${shortName} · ${shockLabel}`,
+      m: state.minerals[state.mineralKey],
+      r: state.simResult,
+      s: state.stockpileResult,
+      prob: null, // 충격 시뮬레이터에는 발동확률 입력이 없어 비워둔다 (예전 가상 시나리오와 달리 사용자가 직접 만든 what-if)
+    };
+    state.savedScenarios = saved;
+    saveScenariosToStorage();
+    alert(`${emptySlot.label}(으)로 저장되었습니다. "시나리오 비교" 탭에서 확인하세요.`);
+  });
 }
 
 function renderShockTypes() {
@@ -1205,6 +1247,7 @@ function setupAuth() {
   const doLogout = () => {
     sessionStorage.removeItem("ksupply_logged_in");
     sessionStorage.removeItem("ksupply_params");
+    sessionStorage.removeItem(SCENARIO_STORAGE_KEY);
     showLogin();
   };
   document.getElementById("logout-btn").addEventListener("click", doLogout);
@@ -1571,7 +1614,6 @@ function setupLandingCarousel() {
 
 // ── ④ 시나리오 비교 (A/B/C, 실 /api/simulate·/api/stockpile 연동) ──
 function setupScenarioView() {
-  renderScenToggles();
   document.getElementById("scen-toggles").addEventListener("click", (e) => {
     const row = e.target.closest("[data-scen]");
     if (!row) return;
@@ -1580,38 +1622,51 @@ function setupScenarioView() {
     renderScenToggles();
     renderScenario();
   });
-  document.getElementById("scen-run-btn").addEventListener("click", () => loadScenarioData());
+  document.getElementById("scen-header-grid").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-remove-scen]");
+    if (!btn) return;
+    delete state.savedScenarios[btn.dataset.removeScen];
+    saveScenariosToStorage();
+    syncScenarios();
+  });
+  document.getElementById("scen-run-btn").addEventListener("click", () => syncScenarios());
   document.getElementById("scen-export-btn").addEventListener("click", () => window.print());
   document.getElementById("scen-report-btn").addEventListener("click", () => window.print());
 
-  loadScenarioData();
+  state.savedScenarios = loadScenariosFromStorage();
+  syncScenarios();
 }
 
 function renderScenToggles() {
-  document.getElementById("scen-toggles").innerHTML = SCENARIO_DEFS.map((s) => `
+  document.getElementById("scen-toggles").innerHTML = state.scenarioResults.map((s) => `
     <div class="scen-toggle" data-scen="${s.key}">
       <span class="scen-toggle-box" style="background:${state.scenSelected[s.key] ? s.color : "#fff"};border-color:${s.color}"></span>${s.label}
     </div>`).join("");
 }
 
-async function loadScenarioData() {
-  const results = await Promise.all(SCENARIO_DEFS.map(async (def) => {
-    const m = state.minerals[def.mineralKey];
-    const simParams = new URLSearchParams({ mineral: def.mineralKey, restriction_pct: def.pct, korea_import_bn: m.korea_import_bn });
-    const r = await fetchJSON(`${API}/api/simulate?${simParams}`);
-    const stockParams = new URLSearchParams({
-      mineral: def.mineralKey, restriction_pct: def.pct, korea_import_bn: m.korea_import_bn,
-      days_stock: 45, daily_cons_ton: 500, release_pct: 50, import_cost: 0.5, target_days: 60,
-    });
-    const s = await fetchJSON(`${API}/api/stockpile?${stockParams}`);
-    return { ...def, m, r, s };
-  }));
-  state.scenarioResults = results;
+// 예전엔 여기서 API를 호출해 미리 정해둔 3개 시나리오를 계산했는데, 지금은 충격
+// 시뮬레이터에서 "시나리오로 저장" 시점에 이미 계산된 결과(r/s)를 그대로 저장해두므로
+// 새로 fetch할 필요 없이 sessionStorage에서 동기적으로 읽어오기만 하면 된다.
+function syncScenarios() {
+  state.scenarioResults = SCENARIO_SLOTS
+    .map((slot) => state.savedScenarios[slot.key])
+    .filter(Boolean);
+  state.scenarioResults.forEach((s) => {
+    if (!(s.key in state.scenSelected)) state.scenSelected[s.key] = true;
+  });
+  renderScenToggles();
   renderScenario();
 }
 
 function renderScenario() {
-  if (!state.scenarioResults) return;
+  const hasAny = state.scenarioResults.length > 0;
+  document.getElementById("scen-empty-state").hidden = hasAny;
+  document.getElementById("scen-ab-section").hidden = !hasAny;
+  if (!hasAny) {
+    document.getElementById("scen-best-label").textContent = "최적 시나리오: -";
+    return;
+  }
+
   const selected = state.scenarioResults.filter((s) => state.scenSelected[s.key]);
   const cols = `repeat(${Math.max(1, selected.length)}, 1fr)`;
   ["scen-header-grid", "scen-kpi-grid", "scen-heatmap-grid", "scen-radar-grid", "scen-ai-grid"].forEach((id) => {
@@ -1620,8 +1675,9 @@ function renderScenario() {
 
   document.getElementById("scen-header-grid").innerHTML = selected.map((s) => `
     <div class="scen-header-block" style="background:${s.color}">
+      <button type="button" class="scen-header-remove" data-remove-scen="${s.key}" aria-label="${s.label} 삭제">✕</button>
       <div class="scen-header-title">${s.label}</div>
-      <div class="scen-header-sub">${s.shockLabel} · 강도 ${s.pct}% · 발동확률 ${s.prob}%</div>
+      <div class="scen-header-sub">${s.shockLabel} · 강도 ${s.pct}%${s.prob != null ? ` · 발동확률 ${s.prob}%` : ""}</div>
     </div>`).join("");
 
   if (!selected.length) {
@@ -1631,20 +1687,21 @@ function renderScenario() {
     return;
   }
 
+  const hasProb = selected.every((s) => s.prob != null);
   const worstSupplyDrop = Math.max(...selected.map((s) => s.pct));
   const worstStockDays = Math.min(...selected.map((s) => s.s.coverage_days));
   const worstUrgentQty = Math.max(...selected.map((s) => s.s.shortage));
   const worstEconLoss = Math.max(...selected.map((s) => s.r.total_prod));
-  const worstWeighted = Math.max(...selected.map((s) => s.r.total_prod * (s.prob / 100)));
+  const worstWeighted = hasProb ? Math.max(...selected.map((s) => s.r.total_prod * (s.prob / 100))) : null;
   document.getElementById("scen-kpi-grid").innerHTML = selected.map((s) => {
-    const weighted = s.r.total_prod * (s.prob / 100);
+    const weighted = hasProb ? s.r.total_prod * (s.prob / 100) : null;
     const kpis = [
       ["공급 감소율", `${s.pct}%`, s.pct === worstSupplyDrop],
-      ["발동확률 (USGS 방법론 참고)", `${s.prob}%`, false],
+      ...(hasProb ? [["발동확률", `${s.prob}%`, false]] : []),
       ["비축 여유 일수", `${Math.round(s.s.coverage_days)}일`, s.s.coverage_days === worstStockDays],
       ["긴급 조달 필요량", `${Math.round(s.s.shortage).toLocaleString("ko-KR")}톤`, s.s.shortage === worstUrgentQty],
       ["경제적 피해 추정액", `${fmt(s.r.total_prod)}조원`, s.r.total_prod === worstEconLoss],
-      ["확률가중 손실액", `${fmt(weighted)}조원`, weighted === worstWeighted],
+      ...(hasProb ? [["확률가중 손실액", `${fmt(weighted)}조원`, weighted === worstWeighted]] : []),
     ];
     return `<div class="scen-kpi-col">${kpis.map(([label, val, worst]) => `
       <div class="scen-kpi-card ${worst ? "worst" : ""}">
@@ -1673,7 +1730,7 @@ function renderScenario() {
     const actions = buildRecommendations(s.r).map((rec) => rec.text);
     return `<div class="ai-box" style="--kpi-color:${s.color}">
       <div class="ai-box-title">AI 권고 요약</div>
-      <div class="ai-box-summary">${s.shockLabel} 시나리오 기준 공급 ${s.pct}% 제한 시 총 생산 파급 손실 ${fmt(s.r.total_prod)}조원, 비축 커버리지 ${Math.round(s.s.coverage_days)}일 확보. 발동확률 ${s.prob}% 반영 시 확률가중 손실액은 ${fmt(s.r.total_prod * (s.prob / 100))}조원.</div>
+      <div class="ai-box-summary">${s.shockLabel} 시나리오 기준 공급 ${s.pct}% 제한 시 총 생산 파급 손실 ${fmt(s.r.total_prod)}조원, 비축 커버리지 ${Math.round(s.s.coverage_days)}일 확보.${s.prob != null ? ` 발동확률 ${s.prob}% 반영 시 확률가중 손실액은 ${fmt(s.r.total_prod * (s.prob / 100))}조원.` : ""}</div>
       ${actions.map((a) => `<div class="ai-box-action">· ${a}</div>`).join("")}
     </div>`;
   }).join("");
