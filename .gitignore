@@ -8,3 +8,4 @@ _design_import*/
 Thumbs.db
 server_out.log
 server_err.log
+.env
