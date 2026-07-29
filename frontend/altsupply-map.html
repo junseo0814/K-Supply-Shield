@@ -24,23 +24,40 @@
 <svg id="map"></svg>
 <script>
 var svg = d3.select('#map');
-var width = window.innerWidth, height = window.innerHeight;
-svg.attr('viewBox', '0 0 ' + width + ' ' + height);
 var projection = d3.geoNaturalEarth1();
 var path = d3.geoPath().projection(projection);
 var geoData = null;
 var current = { crisis: [], alt: [] };
 var COLORS = { crisis: '#C0392B', alt: '#27AE60', none: '#FFFFFF' };
 
+// iframe이 부모 페이지 레이아웃(sticky 사이드바 등)에 자리잡기 전에 스크립트가 먼저
+// 실행되면 window.innerWidth/innerHeight가 0으로 읽혀 좌표 계산이 전부 깨지는 문제가
+// 있었다 — 매번 새로 읽고, 0이면 합리적인 기본값으로 대체한다.
+function getSize() {
+  var w = window.innerWidth || document.documentElement.clientWidth || 700;
+  var h = window.innerHeight || document.documentElement.clientHeight || 260;
+  return { w: w, h: h };
+}
+
+function fitAndDraw() {
+  if (!geoData) return;
+  var size = getSize();
+  svg.attr('viewBox', '0 0 ' + size.w + ' ' + size.h);
+  projection.fitSize([size.w - 8, size.h - 8], geoData);
+  svg.selectAll('path').attr('d', path);
+  if (current.crisis.length || current.alt.length) render();
+}
+
 fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json')
   .then(function(r){ return r.json(); })
   .then(function(topo){
     geoData = topojson.feature(topo, topo.objects.countries);
-    projection.fitSize([width - 8, height - 8], geoData);
     svg.selectAll('path').data(geoData.features).enter().append('path')
-      .attr('class', 'country').attr('d', path).attr('fill', '#FFFFFF');
-    if (current.crisis.length || current.alt.length) render();
+      .attr('class', 'country').attr('fill', '#FFFFFF');
+    fitAndDraw();
   });
+
+window.addEventListener('resize', fitAndDraw);
 
 function infoFor(iso) {
   var c = current.crisis.find(function(d){ return Number(d.iso) === Number(iso); });
@@ -52,6 +69,7 @@ function infoFor(iso) {
 
 function render() {
   if (!geoData) return;
+  var size = getSize();
   document.getElementById('empty').style.display = 'none';
 
   svg.selectAll('path').attr('fill', function(d){
@@ -76,8 +94,8 @@ function render() {
     var c = path.centroid(feature);
     if (!c || isNaN(c[0]) || isNaN(c[1])) return;
     var angle = (i / Math.max(n, 1)) * Math.PI * 2 - Math.PI / 2;
-    var lx = Math.max(70, Math.min(width - 70, c[0] + Math.cos(angle) * 110));
-    var ly = Math.max(24, Math.min(height - 24, c[1] + Math.sin(angle) * 90));
+    var lx = Math.max(70, Math.min(size.w - 70, c[0] + Math.cos(angle) * 110));
+    var ly = Math.max(24, Math.min(size.h - 24, c[1] + Math.sin(angle) * 90));
 
     leaderLayer.append('circle').attr('cx', c[0]).attr('cy', c[1]).attr('r', 3).attr('fill', COLORS[item.type]);
     leaderLayer.append('line')
