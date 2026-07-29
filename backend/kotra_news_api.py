@@ -67,7 +67,10 @@ def parse_items(raw_json):
         {
             "country": it.get("nat"),
             "title": it.get("nttSj"),
-            "url": it.get("kotraNewsUrl"),
+            # API가 주는 kotraNewsUrl 필드는 옛 URL 스킴(bbsGbn/bbsSn)이라 실제로는 404가 뜬다
+            # (2026-07-29 확인). 실제 사이트가 쓰는 SITE_NO/MENU_ID/CONTENTS_NO 스킴으로 직접 구성.
+            "url": f"https://dream.kotra.or.kr/kotranews/cms/news/actionKotraBoardDetail.do"
+                   f"?SITE_NO=3&MENU_ID=180&CONTENTS_NO=1&pNttSn={it.get('nttSn')}",
             "date": it.get("othbcDt"),
             "id": it.get("nttSn"),
             "office": it.get("kbc"),
