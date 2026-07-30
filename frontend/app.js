@@ -1669,7 +1669,7 @@ function renderDashboardScanList(scan) {
       <div class="industry-row">
         <div class="industry-name">${shortName}</div>
         <div class="industry-track"><div class="industry-bar" style="width:${Math.max(4, (sim.total_prod / maxVal) * 100).toFixed(0)}%; background:${color}"></div></div>
-        <div class="industry-value">${fmt(sim.total_prod, 2)}조 <span class="risk-badge ${sim.risk_level}">${sim.risk_level}</span></div>
+        <div class="industry-value"><span>${fmt(sim.total_prod, 2)}조</span><span class="risk-badge ${sim.risk_level}">${sim.risk_level}</span></div>
       </div>`;
   }).join("");
 }
@@ -1722,7 +1722,7 @@ function renderDashboardPriority(scan) {
       <div class="industry-row">
         <div class="industry-name">${p.industry}</div>
         <div class="industry-track"><div class="industry-bar" style="width:${Math.max(4, (p.score / topScore) * 100).toFixed(0)}%; background:${color}"></div></div>
-        <div class="industry-value">${p.score.toFixed(2)} <span class="risk-badge ${level}">${level}</span></div>
+        <div class="industry-value"><span>${p.score.toFixed(2)}</span><span class="risk-badge ${level}">${level}</span></div>
       </div>`;
   }).join("");
 }

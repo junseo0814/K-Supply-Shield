@@ -515,7 +515,12 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   background: var(--accent);
   transition: width .25s ease, background .2s ease;
 }
-.industry-value { font-size: 13px; font-weight: 700; text-align: right; }
+/* 값+등급배지가 한 줄에 붙는 rows는 화면 폭이나 배지 글자수(HIGH/MEDIUM/LOW)에 따라
+   줄바꿈 여부가 들쭉날쭉해 보였다 — 값과 배지를 항상 두 줄로 고정 배치해 형식을 통일한다. */
+.industry-value {
+  font-size: 13px; font-weight: 700; text-align: right;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+}
 .industry-share { font-size: 11px; font-weight: 600; color: var(--text-quaternary); white-space: nowrap; }
 
 /* ── KOMIS ─────────────────────────────────────────────── */
