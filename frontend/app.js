@@ -1716,12 +1716,13 @@ function renderDashboardPriority(scan) {
 
   const topScore = sorted[0].score || 1;
   priorityBarsEl.innerHTML = sorted.map((p) => {
-    const color = p.rank <= 2 ? "var(--danger)" : p.rank <= 5 ? "var(--warning)" : "var(--multiplier-blue)";
+    const level = p.rank <= 2 ? "HIGH" : p.rank <= 5 ? "MEDIUM" : "LOW";
+    const color = level === "HIGH" ? "var(--danger)" : level === "MEDIUM" ? "var(--warning)" : "var(--success)";
     return `
       <div class="industry-row">
         <div class="industry-name">${p.industry}</div>
         <div class="industry-track"><div class="industry-bar" style="width:${Math.max(4, (p.score / topScore) * 100).toFixed(0)}%; background:${color}"></div></div>
-        <div class="industry-value">${p.score.toFixed(2)}</div>
+        <div class="industry-value">${p.score.toFixed(2)} <span class="risk-badge ${level}">${level}</span></div>
       </div>`;
   }).join("");
 }
