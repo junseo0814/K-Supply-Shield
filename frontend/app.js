@@ -645,33 +645,62 @@ async function runProcSim() {
   renderProcHHI(m);
 }
 
+// ③④⑤⑥(조달방식/예산/납기/리스크 허용도) 입력을 실제로 반영해 "실행"을 눌렀을 때
+// 결과가 달라지도록 한다 — 예전엔 이 4개 입력이 전혀 계산에 안 쓰여서 버튼을 눌러도
+// 화면이 그대로였다. 4개 조달방식(PROC_METHODS)을 전부 후보로 보여주고, 예산·납기·
+// 리스크 허용도를 모두 만족하는 것 중 최저비용을 "추천"으로 표시한다.
+const PROC_RISK_CEILING = { low: 30, medium: 55, high: 100 };
+
 function renderProcOptionsFromState(mArg) {
   const m = mArg || state.minerals[state.procMineral];
   if (!m) return;
   const qty = state.procQty || 0;
   const baseUnitCost = 0.5; // 억원/MT — 기존 앱 긴급수입 단가 기본 가정치
+  const deadlineDays = Number(state.procDeadline) || 999;
+  const riskCeiling = PROC_RISK_CEILING[state.procRisk] ?? 55;
   const options = [
-    { name: "긴급 현물 조달", top: true, unitPrice: baseUnitCost, leadDays: 7, riskScore: 62, supplier: m.top_producer },
-    { name: "장기 계약 조달", top: false, unitPrice: baseUnitCost * 0.83, leadDays: 45, riskScore: 28, supplier: m.top_producer },
-    { name: "공동 비축 조달", top: false, unitPrice: baseUnitCost * 0.89, leadDays: 21, riskScore: 41, supplier: m.top_producer },
+    { key: "emergency", name: "긴급 현물 조달", unitPrice: baseUnitCost, leadDays: 7, riskScore: 62, supplier: m.top_producer },
+    { key: "longterm", name: "장기 계약 조달", unitPrice: baseUnitCost * 0.83, leadDays: 45, riskScore: 28, supplier: m.top_producer },
+    { key: "futures", name: "선물 계약 조달", unitPrice: baseUnitCost * 0.76, leadDays: 30, riskScore: 35, supplier: m.top_producer },
+    { key: "pooled", name: "공동 비축 조달", unitPrice: baseUnitCost * 0.89, leadDays: 21, riskScore: 41, supplier: m.top_producer },
   ];
+  options.forEach((o) => {
+    o.totalCost = o.unitPrice * qty;
+    o.withinBudget = o.totalCost <= state.procBudget;
+    o.meetsDeadline = o.leadDays <= deadlineDays;
+    o.meetsRisk = o.riskScore <= riskCeiling;
+    o.fitsAll = o.withinBudget && o.meetsDeadline && o.meetsRisk;
+  });
+  // 3개 조건(예산/납기/리스크)을 다 만족하는 것 중 최저비용을 추천 — 하나도 없으면
+  // 전체 중 최저비용(참고용)으로 대체.
+  const qualified = options.filter((o) => o.fitsAll);
+  const pool = qualified.length ? qualified : options;
+  const bestKey = pool.reduce((a, b) => (a.totalCost <= b.totalCost ? a : b)).key;
+
   document.getElementById("proc-option-cards").innerHTML = options.map((o) => {
-    const totalCost = (o.unitPrice * qty).toFixed(1);
+    const isTop = o.key === bestKey;
     const riskColor = o.riskScore > 50 ? "var(--danger)" : o.riskScore > 30 ? "var(--warning)" : "var(--success)";
+    const tags = [
+      !o.withinBudget ? '<span class="option-warn-tag">예산 초과</span>' : "",
+      !o.meetsDeadline ? '<span class="option-warn-tag">납기 초과</span>' : "",
+      !o.meetsRisk ? '<span class="option-warn-tag">리스크 허용 초과</span>' : "",
+      o.key === state.procMethod ? '<span class="option-pick-tag">선택하신 방식</span>' : "",
+    ].join("");
     return `
     <div class="option-card-v2">
-      <div class="option-card-v2-head" style="background:${o.top ? "var(--primary)" : "var(--bg)"};color:${o.top ? "#fff" : "var(--primary)"}">
+      <div class="option-card-v2-head" style="background:${isTop ? "var(--primary)" : "var(--bg)"};color:${isTop ? "#fff" : "var(--primary)"}">
         <div style="font-size:13px;font-weight:700">${o.name}</div>
-        ${o.top ? '<div class="option-badge-top">1순위</div>' : ""}
+        ${isTop ? `<div class="option-badge-top">${qualified.length ? "추천" : "최저비용(조건 불충족)"}</div>` : ""}
       </div>
       <div class="option-card-v2-body">
         <div class="option-row"><span>단가</span><b>${o.unitPrice.toFixed(2)}억원/MT</b></div>
-        <div class="option-row"><span>총비용</span><b>${totalCost}억 원</b></div>
+        <div class="option-row"><span>총비용</span><b>${o.totalCost.toFixed(1)}억 원</b></div>
         <div class="option-row"><span>납기</span><b>${o.leadDays}일</b></div>
         <div class="option-row"><span>리스크 점수</span><b style="color:${riskColor}">${o.riskScore}</b></div>
         <div class="option-row"><span>공급국</span><b>${o.supplier}</b></div>
+        ${tags ? `<div class="option-tags">${tags}</div>` : ""}
       </div>
-      <div class="option-card-v2-foot"><button type="button" class="option-select-btn">선택</button></div>
+      <div class="option-card-v2-foot"><button type="button" class="option-select-btn" data-method="${o.key}">선택</button></div>
     </div>`;
   }).join("");
 }
@@ -681,6 +710,7 @@ function renderProcRadar() {
   const opts = [
     { name: "긴급 현물", scores: [55, 90, 38], color: "#1B2556" },
     { name: "장기 계약", scores: [85, 45, 72], color: "#007AFF" },
+    { name: "선물 계약", scores: [76, 60, 65], color: "#27AE60" },
     { name: "공동 비축", scores: [70, 60, 59], color: "#E67E22" },
   ];
   document.getElementById("proc-radar-wrap").innerHTML = buildRadarSVG(cats, opts);
@@ -691,6 +721,7 @@ function renderProcHHI(m) {
   const rows = [
     { name: "긴급 현물", value: Math.round(share * share + ((100 - share) * (100 - share)) / 2), color: "var(--danger)" },
     { name: "장기 계약", value: Math.round((share * 0.6) ** 2 + ((100 - share * 0.6) ** 2) / 3), color: "var(--success)" },
+    { name: "선물 계약", value: Math.round((share * 0.7) ** 2 + ((100 - share * 0.7) ** 2) / 2.8), color: "#27AE60" },
     { name: "공동 비축", value: Math.round((share * 0.8) ** 2 + ((100 - share * 0.8) ** 2) / 2.5), color: "var(--warning)" },
   ];
   const maxV = Math.max(...rows.map((r) => r.value), 1);
