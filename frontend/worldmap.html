@@ -34,19 +34,8 @@ var DATA = {
   360: { name: '인도네시아', dependency: 35, minerals: '니켈', level: 'mid', risk: '정상', flag: '🇮🇩' }
 };
 var COLORS = { high: '#1B2556', mid: '#3B9AE1', low: '#8FC1EA', none: '#FFFFFF' };
-// "국가별 보기" 모드 전용 — 위험도 그룹(고/중/저)이 아니라 국가 하나하나를 구분해 보여주기 위한
-// 개별 색상. 위험도 배색(COLORS)과 겹치지 않도록 계열을 다르게 잡았다.
-var COUNTRY_COLORS = {
-  156: '#1B2556', // 중국
-  180: '#B84C51', // 콩고민주공화국
-  152: '#007AFF', // 칠레
-  36:  '#16A085', // 호주
-  608: '#E67E22', // 필리핀
-  360: '#8E44AD'  // 인도네시아
-};
-function fillFor(info, id) {
+function fillFor(info) {
   if (!info) return '#FFFFFF';
-  if (mode === 'country') return COUNTRY_COLORS[Number(id)] || '#8FC1EA';
   if (mode === 'risk' && info.level !== 'high') return '#FFFFFF';
   return COLORS[info.level];
 }
@@ -74,7 +63,7 @@ function render(geo){
   sel.enter().append('path')
     .attr('class', function(d){ return getInfo(d.id) ? 'country dep' : 'country'; })
     .attr('d', path)
-    .attr('fill', function(d){ return fillFor(getInfo(d.id), d.id); })
+    .attr('fill', function(d){ return fillFor(getInfo(d.id)); })
     .on('mousemove', function(event, d){
       var info = getInfo(d.id);
       if (!info) { tooltip.style.display = 'none'; return; }
@@ -137,7 +126,7 @@ function render(geo){
 window.addEventListener('message', function(e){
   if (e.data && e.data.type === 'setMode') {
     mode = e.data.mode;
-    svg.selectAll('path').attr('fill', function(d){ return fillFor(getInfo(d.id), d.id); });
+    svg.selectAll('path').attr('fill', function(d){ return fillFor(getInfo(d.id)); });
     // 위험 광물만 모드에서는 위험도 낮은 국가의 국기/이름 라벨과 지시선도 함께 숨긴다
     Object.keys(DATA).forEach(function(id){
       var info = DATA[id];
