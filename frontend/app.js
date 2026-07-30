@@ -89,6 +89,7 @@ const state = {
   matrixMineralFilter: "all",
   matrixRiskFilter: "all",
   matrixData: null,
+  confirmedProcHistory: [], // 조달 시뮬레이션에서 "확정"한 이력 — sessionStorage에 영속화
 
   // 시나리오 비교 (A/B/C) — 충격 시뮬레이터에서 "시나리오로 저장"을 눌러야 채워진다.
   scenSelected: { A: true, B: true, C: true },
@@ -116,6 +117,19 @@ function loadScenariosFromStorage() {
   }
 }
 
+// 조달 시뮬레이션에서 "확정"한 조달안 — MOCK_PROC_HISTORY 위에 누적 표시된다.
+const PROC_HISTORY_STORAGE_KEY = "ksupply_confirmed_proc_history";
+function saveProcHistoryToStorage() {
+  sessionStorage.setItem(PROC_HISTORY_STORAGE_KEY, JSON.stringify(state.confirmedProcHistory));
+}
+function loadProcHistoryFromStorage() {
+  try {
+    return JSON.parse(sessionStorage.getItem(PROC_HISTORY_STORAGE_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
 const PROC_METHODS = [
   { key: "emergency", label: "긴급 현물" }, { key: "longterm", label: "장기 계약" },
   { key: "futures", label: "선물 계약" }, { key: "pooled", label: "공동 비축" },
@@ -129,7 +143,8 @@ const MOCK_PROC_HISTORY = [
   { date: "2026-07-14", mineral: "희토류 (Rare Earths)", action: "장기 계약 체결", qty: 500, owner: "박도윤", status: "완료" },
   { date: "2026-07-09", mineral: "흑연 (Graphite)", action: "입고", qty: 2000, owner: "정하은", status: "완료" },
   { date: "2026-07-03", mineral: "코발트 (Cobalt)", action: "조달 발주", qty: 400, owner: "김민준", status: "지연" },
-]; // MOCK DATA — 실 조달 이력 시스템 연동 필요
+]; // MOCK DATA — 실 조달 이력 시스템 연동 필요. 조달 시뮬레이션에서 "확정"한 항목은
+   // state.confirmedProcHistory(sessionStorage 영속)에 별도 누적되어 이 목록 위에 표시된다.
 
 const SHOCK_TYPES = [
   { key: "export", label: "수출 규제 (중국/콩고 등 주요국)" },
@@ -507,6 +522,7 @@ function setupProcurementView() {
     }
   });
 
+  state.confirmedProcHistory = loadProcHistoryFromStorage();
   renderHistoryTable();
   setProcTab("stock");
 }
@@ -614,6 +630,33 @@ function setupProcSimTab() {
   });
 
   document.getElementById("proc-run-btn").addEventListener("click", () => { runProcSim(); });
+
+  document.getElementById("proc-option-cards").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-method]");
+    if (!btn) return;
+    state.procMethod = btn.dataset.method;
+    renderProcMethods();
+    renderProcOptionsFromState();
+  });
+
+  document.getElementById("proc-confirm-btn").addEventListener("click", () => {
+    const chosen = lastProcOptions.find((o) => o.key === state.procMethod);
+    if (!chosen || !state.procQty) { alert("먼저 조달 시뮬레이션을 실행해주세요."); return; }
+    const mineralName = (state.procMineral || "").replace(/\s*\(.*\)/, "");
+    const entry = {
+      date: new Date().toISOString().slice(0, 10),
+      mineral: state.procMineral,
+      action: chosen.name,
+      qty: state.procQty,
+      owner: "홍길동 사무관",
+      status: "진행중",
+      confirmed: true,
+    };
+    state.confirmedProcHistory.unshift(entry);
+    saveProcHistoryToStorage();
+    renderHistoryTable();
+    alert(`${mineralName} ${entry.qty.toLocaleString("ko-KR")}톤 (${entry.action}) 확정 — 이력 관리 탭에 기록되었습니다.`);
+  });
 }
 
 function renderProcMethods() {
@@ -650,6 +693,7 @@ async function runProcSim() {
 // 화면이 그대로였다. 4개 조달방식(PROC_METHODS)을 전부 후보로 보여주고, 예산·납기·
 // 리스크 허용도를 모두 만족하는 것 중 최저비용을 "추천"으로 표시한다.
 const PROC_RISK_CEILING = { low: 30, medium: 55, high: 100 };
+let lastProcOptions = []; // renderProcOptionsFromState()가 마지막으로 계산한 옵션 목록 — "확정" 버튼에서 참조
 
 function renderProcOptionsFromState(mArg) {
   const m = mArg || state.minerals[state.procMineral];
@@ -676,6 +720,7 @@ function renderProcOptionsFromState(mArg) {
   const qualified = options.filter((o) => o.fitsAll);
   const pool = qualified.length ? qualified : options;
   const bestKey = pool.reduce((a, b) => (a.totalCost <= b.totalCost ? a : b)).key;
+  lastProcOptions = options;
 
   document.getElementById("proc-option-cards").innerHTML = options.map((o) => {
     const isTop = o.key === bestKey;
@@ -791,10 +836,11 @@ function renderMatrixTable() {
 
 function renderHistoryTable() {
   const statusColor = { "완료": "var(--success)", "진행중": "var(--multiplier-blue)", "지연": "var(--danger)" };
-  const rows = MOCK_PROC_HISTORY.map((h, idx) => {
+  const combined = [...(state.confirmedProcHistory || []), ...MOCK_PROC_HISTORY];
+  const rows = combined.map((h, idx) => {
     const shortName = h.mineral.replace(/\s*\(.*\)/, "");
     return `<tr class="${idx % 2 === 1 ? "zebra" : ""}">
-      <td>${h.date}</td><td>${shortName}</td><td>${h.action}</td><td>${h.qty.toLocaleString("ko-KR")}톤</td><td>${h.owner}</td>
+      <td>${h.date}${h.confirmed ? ' <span class="option-pick-tag">확정</span>' : ""}</td><td>${shortName}</td><td>${h.action}</td><td>${h.qty.toLocaleString("ko-KR")}톤</td><td>${h.owner}</td>
       <td><span class="risk-badge" style="background:${statusColor[h.status]};color:#fff">${h.status}</span></td>
     </tr>`;
   }).join("");
@@ -1416,6 +1462,7 @@ function setupAuth() {
     sessionStorage.removeItem("ksupply_logged_in");
     sessionStorage.removeItem("ksupply_params");
     sessionStorage.removeItem(SCENARIO_STORAGE_KEY);
+    sessionStorage.removeItem(PROC_HISTORY_STORAGE_KEY);
     showLogin();
   };
   document.getElementById("logout-btn").addEventListener("click", doLogout);

@@ -1697,6 +1697,9 @@ a.alert-item-title:hover { color: var(--primary); text-decoration: underline; }
 .option-card-v2-foot { padding: 0 16px 14px; }
 .option-select-btn { width: 100%; height: 32px; background: var(--primary); color: #fff; border: none; font-size: 12px; cursor: pointer; font-family: var(--font); }
 
+.proc-confirm-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: -4px 0 16px; }
+.proc-confirm-hint { font-size: 11px; color: var(--text-tertiary); }
+
 .hhi-row { margin-bottom: 14px; }
 .hhi-row:last-of-type { margin-bottom: 8px; }
 .hhi-row-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
