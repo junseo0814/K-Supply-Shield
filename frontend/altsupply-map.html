@@ -113,6 +113,8 @@ function render() {
   });
 
   if (window.twemoji) twemoji.parse(labelsEl, { folder: 'svg', ext: '.svg' });
+  // 부모 페이지(리포트 생성)가 라벨이 실제로 그려질 때까지 기다릴 수 있도록 완료를 알림.
+  if (window.parent) window.parent.postMessage({ type: 'altDataRendered' }, '*');
 }
 
 window.addEventListener('message', function(e){

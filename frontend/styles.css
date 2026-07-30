@@ -1055,6 +1055,23 @@ a.alert-item-title:hover { color: var(--primary); text-decoration: underline; }
 .report-table th { background: #bfccef; font-weight: 700; }
 .report-table td.left { text-align: left; }
 
+.report-chart-img { display: block; width: 100%; max-height: 220px; object-fit: contain; margin: 8px 0 14px; }
+.report-radar-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.report-radar-item { flex: 1 1 30%; min-width: 160px; max-width: 240px; }
+.report-radar-item svg { display: block; width: 100%; height: auto; }
+.report-chart-svg-wrap { margin: 8px 0 14px; }
+.report-chart-svg-wrap svg { display: block; width: 100%; height: auto; max-height: 200px; }
+.report-map-wrap { position: relative; margin: 8px auto 14px; overflow: hidden; border: 1px solid #ccc; }
+.report-map-wrap svg { display: block; width: 100%; height: 100%; }
+/* altsupply-map.html의 .label 스타일을 그대로 이식 — iframe 내부 CSS는 리포트(메인 문서)에
+   안 실려서, 지도를 <img>가 아니라 DOM 그대로 복사해 심는 report-map-wrap 안에서만 쓰인다. */
+.report-map-wrap .label { position: absolute; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 6px; color: #fff; font-size: 11px; font-weight: 700; padding: 4px 10px 4px 4px; border-radius: 999px; white-space: nowrap; }
+.report-map-wrap .label.crisis { background: #C0392B; }
+.report-map-wrap .label.alt { background: #27AE60; }
+.report-map-wrap .label .dot { width: 20px; height: 20px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; overflow: hidden; }
+.report-map-wrap .label .dot img.emoji { width: 14px; height: 14px; }
+.report-map-wrap .label .share { font-weight: 800; }
+
 .report-appendix-list {
   font-size: 12.5px;
   color: #000;

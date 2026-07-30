@@ -69,6 +69,7 @@ const state = {
   stockpileResult: null,
   industryExpanded: false, // 모바일: 산업별 파급 손실 목록 전체 펼침 여부
   dashboardScan: null, // 실시간 관제 — 9개 광물 전체 자동 스캔 결과 (loadDashboardScan)
+  altSupply: null, // 충격 시뮬레이터 — 대체 공급국 제안(crisis/alt) 최신 계산 결과, 리포트에서 재사용
 
   // 충격 시뮬레이터 좌측 패널 — ②충격유형/④지속기간/⑤대상국가 (분류·기록용, 레온티에프 계산에는 영향 없음)
   simShockType: "export",
@@ -1044,14 +1045,14 @@ async function runSimulation() {
   });
   const result = await fetchJSON(`${API}/api/simulate?${params}`);
   state.simResult = result;
-  renderAll(result);
+  await renderAll(result);
 }
 
-function renderAll(r) {
+async function renderAll(r) {
   renderSimKpiGrid(r);
   renderSimLineChart(r);
   renderSimHeatmapTable(r);
-  renderAltSupplyMap();
+  await renderAltSupplyMap();
   renderSimPathway(r);
   renderSimInsightPanel(r);
   renderDdaySelect();
@@ -1063,6 +1064,8 @@ function renderAll(r) {
 
 // 시뮬레이션 실행 시점의 ⑤ 충격 대상국(체크박스)을 "위험국"으로, 그 광물의 나머지
 // 주요 생산국을 "대체 수입 후보"로 지도(altsupply-map.html)와 카드 목록에 함께 보여준다.
+// 지도는 iframe에 postMessage로 비동기 전달되므로, 리포트가 그 결과를 캡처하려면 iframe이
+// 실제로 다 그렸다는 응답(altDataRendered)을 기다려야 한다 — 반환하는 Promise가 그 역할.
 function renderAltSupplyMap() {
   const producers = MINERAL_PRODUCERS[state.mineralKey] || [];
   const crisisIsoSet = new Set(
@@ -1072,24 +1075,38 @@ function renderAltSupplyMap() {
   );
   const crisis = producers.filter((p) => crisisIsoSet.has(p.iso));
   const alt = producers.filter((p) => !crisisIsoSet.has(p.iso)).slice(0, 5);
-
-  const frame = document.getElementById("altsupply-map-frame");
-  if (frame.contentWindow) frame.contentWindow.postMessage({ type: "setAltData", crisis, alt }, "*");
+  state.altSupply = { crisis, alt }; // 리포트(별첨: 대체 공급국 제안)에서 재사용
 
   const cardsEl = document.getElementById("altsupply-cards");
   if (!alt.length) {
     cardsEl.innerHTML = `<div class="altmap-empty">${
       crisis.length ? "이 광물은 대체 공급처가 사실상 없어 재자원화·비축 확대 등 다른 대응이 필요합니다." : "충격 대상국 외 주요 생산국 정보가 없습니다."
     }</div>`;
-    return;
+  } else {
+    const shortName = state.mineralKey.replace(/\s*\(.*\)/, "");
+    cardsEl.innerHTML = alt.map((c) => `
+      <div class="altmap-card">
+        <span class="altmap-card-name">${c.flag} ${c.name}</span>
+        <span class="altmap-card-share">${c.share != null ? `세계 생산 ${c.share}%` : "정제·가공 대안"}</span>
+        <span class="altmap-card-note">${c.note || `이 나라에서 ${shortName} 수입 비중을 확대해 위험을 완화하는 방안을 검토하세요.`}</span>
+      </div>`).join("");
   }
-  const shortName = state.mineralKey.replace(/\s*\(.*\)/, "");
-  cardsEl.innerHTML = alt.map((c) => `
-    <div class="altmap-card">
-      <span class="altmap-card-name">${c.flag} ${c.name}</span>
-      <span class="altmap-card-share">${c.share != null ? `세계 생산 ${c.share}%` : "정제·가공 대안"}</span>
-      <span class="altmap-card-note">${c.note || `이 나라에서 ${shortName} 수입 비중을 확대해 위험을 완화하는 방안을 검토하세요.`}</span>
-    </div>`).join("");
+
+  const frame = document.getElementById("altsupply-map-frame");
+  if (!frame.contentWindow) return Promise.resolve();
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      window.removeEventListener("message", onMsg);
+      resolve();
+    };
+    const onMsg = (e) => { if (e.data && e.data.type === "altDataRendered") finish(); };
+    window.addEventListener("message", onMsg);
+    frame.contentWindow.postMessage({ type: "setAltData", crisis, alt }, "*");
+    setTimeout(finish, 1500); // 안전장치: iframe 응답이 없어도 리포트 생성이 멈추지 않도록
+  });
 }
 
 function renderSimKpiGrid(r) {
@@ -1429,6 +1446,10 @@ function switchView(view) {
   if (view === "stockpile" && state.mineralKey) runStockpile();
   if (view === "dashboard") renderDashboard();
   if (view === "reports") renderReportsList();
+  // scen-line-chart/scen-cost-chart는 init() 시점(탭이 아직 hidden일 때) 한 번 만들어지는데,
+  // Chart.js가 그때 0x0으로 측정한 크기를 이후 resize()로도 못 고치는 경우가 있어, 이 탭이
+  // 실제로 보이게 된 지금 시점에 다시 그려서 올바른 크기로 만든다.
+  if (view === "compare") syncScenarios();
   updatePrintHeader();
 }
 
@@ -1880,12 +1901,14 @@ function renderScenLineChart(selected) {
   datasets.push({ label: "정상 공급", data: months.map(() => 100), borderColor: "#AAAAAA", borderDash: [3, 3], pointRadius: 0, fill: false });
   datasets.push({ label: "안전 임계선", data: months.map(() => 60), borderColor: "#C0392B", borderDash: [4, 4], pointRadius: 0, fill: false });
   const data = { labels: months.map((m) => `${m}개월`), datasets };
-  if (!scenLineChart) {
-    scenLineChart = new Chart(canvas.getContext("2d"), {
-      type: "line", data,
-      options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: "bottom", labels: { font: { size: 10 }, boxWidth: 10 } } }, scales: { y: { min: 0, max: 110, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 9 } } } } },
-    });
-  } else { scenLineChart.data = data; scenLineChart.update(); }
+  // update-in-place 대신 매번 destroy 후 재생성 — 이 캔버스는 처음 만들어질 때 탭이
+  // hidden 상태라 0x0으로 잘못 측정되는 경우가 있는데, 그 상태로 굳어지면 resize()를
+  // 불러도 안 풀려서(Chart.js 캐시된 크기 버그) update()로는 영구히 안 보이게 된다.
+  if (scenLineChart) scenLineChart.destroy();
+  scenLineChart = new Chart(canvas.getContext("2d"), {
+    type: "line", data,
+    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: "bottom", labels: { font: { size: 10 }, boxWidth: 10 } } }, scales: { y: { min: 0, max: 110, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 9 } } } } },
+  });
 }
 
 let scenCostChart = null;
@@ -1902,12 +1925,11 @@ function renderScenCostChart(selected) {
     ],
   }));
   const data = { labels: cats, datasets };
-  if (!scenCostChart) {
-    scenCostChart = new Chart(canvas.getContext("2d"), {
-      type: "bar", data,
-      options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: "bottom", labels: { font: { size: 10 }, boxWidth: 10 } } }, scales: { y: { ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 10 } } } } },
-    });
-  } else { scenCostChart.data = data; scenCostChart.update(); }
+  if (scenCostChart) scenCostChart.destroy();
+  scenCostChart = new Chart(canvas.getContext("2d"), {
+    type: "bar", data,
+    options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: "bottom", labels: { font: { size: 10 }, boxWidth: 10 } } }, scales: { y: { ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 10 } } } } },
+  });
 }
 
 function renderScenPareto(selected) {
@@ -2078,6 +2100,41 @@ function updatePrintHeader() {
   }
 }
 
+// 리포트(인쇄) 전용 — 화면의 Chart.js 캔버스를 이미지로 캡처해 <img>로 심는다.
+// 탭이 hidden 상태일 때 생성된 차트는 컨테이너 크기를 0으로 읽어 캔버스가 0x0으로
+// 잡히는 경우가 있어(Chart.js가 화면이 안 보일 때 만들어지면 흔히 겪는 문제), 캡처
+// 직전에 강제로 한 번 resize를 걸어 실제 표시 크기로 다시 맞춘 뒤 캡처한다.
+function chartImageTag(canvasId, altText, cssClass) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return "";
+  if ((!canvas.width || !canvas.height) && typeof Chart !== "undefined") {
+    const chart = Chart.getChart(canvas);
+    if (chart) chart.resize();
+  }
+  if (!canvas.width || !canvas.height) return "";
+  try {
+    return `<img class="${cssClass || "report-chart-img"}" alt="${altText}" src="${canvas.toDataURL("image/png")}">`;
+  } catch (e) {
+    return "";
+  }
+}
+
+// 대체 공급국 지도(iframe, altsupply-map.html)는 SVG(국가 색칠) + 절대좌표 HTML(국기·라벨)
+// 두 겹으로 이뤄져 있어, 캔버스처럼 한 번에 캡처가 안 된다. 같은 origin이라 iframe 내부
+// DOM에 직접 접근해 두 겹을 그대로 복사한 뒤, 라벨의 절대좌표가 어긋나지 않도록 캡처 당시
+// iframe 실제 렌더링 크기와 정확히 같은 크기의 래퍼로 감싼다.
+function captureAltSupplyMapHtml() {
+  const frame = document.getElementById("altsupply-map-frame");
+  if (!frame || !frame.contentDocument) return "";
+  const doc = frame.contentDocument;
+  const svgEl = doc.getElementById("map");
+  const labelsEl = doc.getElementById("labels");
+  if (!svgEl || !labelsEl || !labelsEl.children.length) return "";
+  const w = frame.contentWindow.innerWidth || frame.offsetWidth || 700;
+  const h = frame.contentWindow.innerHeight || frame.offsetHeight || 260;
+  return `<div class="report-map-wrap" style="width:${w}px;height:${h}px">${svgEl.outerHTML}${labelsEl.outerHTML}</div>`;
+}
+
 function riskDesc(level) {
   return level === "HIGH" ? "즉각 대응 필요"
     : level === "MEDIUM" ? "선제적 대응 권고"
@@ -2140,6 +2197,11 @@ function renderPrintReportSimulate() {
     </div>
 
     <div class="report-section">
+      <div class="report-h1">공급량 변화 예측</div>
+      ${chartImageTag("sim-line-chart", "공급량 변화 예측 차트")}
+    </div>
+
+    <div class="report-section">
       <div class="report-h1">종합 시사점</div>
       <div class="report-h2">${shortName} 공급이 ${r.restriction_pct}% 제한될 경우, D+40 시점까지 누적 생산 파급 손실 ${fmt(r.total_prod)}조원, 고용 위협 ${Math.round(r.total_emp).toLocaleString("ko-KR")}명 발생이 추정됨</div>
       <div class="report-h2">공급망 위험도는 <b>${r.risk_level}</b> 수준으로 평가되며, ${riskDesc(r.risk_level)}</div>
@@ -2149,7 +2211,8 @@ function renderPrintReportSimulate() {
     <div class="report-appendix-list">
       <span class="label">별첨:</span> 1. 공급망 충격 전파 상세 현황<br>
       &nbsp;&nbsp;&nbsp;&nbsp;2. 산업별 생산 파급 손실 상세 (전체 ${allIndustries.length}개 섹터)<br>
-      &nbsp;&nbsp;&nbsp;&nbsp;3. KOMIS 광물종합지수 월별 동향${hasComtrade ? '<br>&nbsp;&nbsp;&nbsp;&nbsp;4. 對중국 수입 세부내역 (UN Comtrade)' : ''}
+      &nbsp;&nbsp;&nbsp;&nbsp;3. KOMIS 광물종합지수 월별 동향<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;${hasComtrade ? "4. 對중국 수입 세부내역 (UN Comtrade)<br>&nbsp;&nbsp;&nbsp;&nbsp;5" : "4"}. 대체 공급국 제안
     </div>
     <div class="report-footer-page">- 1 -</div>
 
@@ -2181,6 +2244,7 @@ function renderPrintReportSimulate() {
     <div class="report-page-break">
       <div class="appendix-label"><div class="appendix-tag">별첨 3</div><div class="appendix-title">KOMIS 광물종합지수 월별 동향</div></div>
       <div class="report-section">
+        ${document.getElementById("komis-svg") ? `<div class="report-chart-svg-wrap">${document.getElementById("komis-svg").outerHTML}</div>` : ""}
         <table class="report-table">
           <thead><tr><th>연월</th><th>광물종합지수</th><th>메이저금속지수</th><th>희소금속지수</th></tr></thead>
           <tbody>${komisMonthRows}</tbody>
@@ -2205,6 +2269,23 @@ function renderPrintReportSimulate() {
       <div class="report-footer-page">- 5 -</div>
     </div>
     ` : ""}
+
+    <!-- ══════ 별첨: 대체 공급국 제안 ══════ -->
+    <div class="report-page-break">
+      <div class="appendix-label"><div class="appendix-tag">별첨 ${hasComtrade ? 5 : 4}</div><div class="appendix-title">대체 공급국 제안</div></div>
+      <div class="report-section">
+        ${captureAltSupplyMapHtml() || `<div class="report-h2" style="color:#666">(시뮬레이션을 실행하면 대체 공급국 지도가 표시됩니다)</div>`}
+        <table class="report-table" style="margin-top:14px">
+          <thead><tr><th>구분</th><th>국가</th><th>비고</th></tr></thead>
+          <tbody>
+            ${(state.altSupply?.crisis || []).map((c) => `<tr><td>충격 대상국</td><td class="left">${c.flag} ${c.name}</td><td class="left">-</td></tr>`).join("")}
+            ${(state.altSupply?.alt || []).map((c) => `<tr><td>대체 수입 후보</td><td class="left">${c.flag} ${c.name}</td><td class="left">${c.share != null ? `세계 생산 ${c.share}%` : (c.note || "정제·가공 대안")}</td></tr>`).join("")}
+          </tbody>
+        </table>
+        ${!(state.altSupply?.alt || []).length ? `<div class="report-h2">이 광물은 대체 공급처가 사실상 없어 재자원화·비축 확대 등 다른 대응이 필요합니다.</div>` : ""}
+      </div>
+      <div class="report-footer-page">- ${hasComtrade ? 6 : 5} -</div>
+    </div>
   `;
 }
 
@@ -2233,6 +2314,18 @@ function renderPrintReportCompare() {
   const worstName = worst ? worst.mineral.replace(/\s*\(.*\)/, "") : "-";
   const highCount = results.filter((r) => r.risk_level === "HIGH").length;
 
+  // A/B/C 저장 시나리오(충격 시뮬레이터 "시나리오로 저장")가 있으면 시계열·비용 차트와
+  // 레이더를 별첨으로 추가한다 — 없으면(아직 하나도 저장 안 했으면) 조용히 건너뛴다.
+  const saved = state.scenarioResults || [];
+  const hasSaved = saved.length > 0;
+  const scenSummaryRows = saved.map((s) => `
+    <tr>
+      <td class="left">${s.label}</td><td class="left">${s.mineralKey.replace(/\s*\(.*\)/, "")}</td>
+      <td>${s.shockLabel}</td><td>${s.pct}%</td><td>${fmt(s.r.total_prod)}조원</td><td>${s.r.risk_level}</td>
+    </tr>`).join("");
+  const radarSvgHtml = Array.from(document.querySelectorAll("#scen-radar-grid svg"))
+    .map((svg) => `<div class="report-radar-item">${svg.outerHTML}</div>`).join("");
+
   document.getElementById("report-body").innerHTML = `
     <!-- ══════ 요약 (1p) ══════ -->
     <div class="report-section">
@@ -2258,7 +2351,9 @@ function renderPrintReportCompare() {
     </div>
 
     <div class="report-appendix-list">
-      <span class="label">별첨:</span> 1. 광물별 시나리오 상세 비교표 (전체 ${results.length}개)
+      <span class="label">별첨:</span> 1. 광물별 시나리오 상세 비교표 (전체 ${results.length}개)${hasSaved ? `<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;2. 저장된 시나리오 비교 — 시계열·비용<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;3. 저장된 시나리오 비교 — 종합 평가 매트릭스` : ""}
     </div>
     <div class="report-footer-page">- 1 -</div>
 
@@ -2275,6 +2370,35 @@ function renderPrintReportCompare() {
       </div>
       <div class="report-footer-page">- 2 -</div>
     </div>
+
+    ${hasSaved ? `
+    <!-- ══════ 별첨 2: 저장된 시나리오 — 시계열·비용 ══════ -->
+    <div class="report-page-break">
+      <div class="appendix-label"><div class="appendix-tag">별첨 2</div><div class="appendix-title">저장된 시나리오 비교 — 시계열·비용</div></div>
+      <div class="report-section">
+        <div class="report-h1">공급량 시계열 비교</div>
+        ${chartImageTag("scen-line-chart", "저장 시나리오 공급량 시계열 비교 차트")}
+      </div>
+      <div class="report-section">
+        <div class="report-h1">비용 비교 (억 원)</div>
+        ${chartImageTag("scen-cost-chart", "저장 시나리오 비용 비교 차트")}
+      </div>
+      <div class="report-section">
+        <table class="report-table">
+          <thead><tr><th>시나리오</th><th>광물</th><th>충격 내용</th><th>강도</th><th>총생산손실</th><th>위험도</th></tr></thead>
+          <tbody>${scenSummaryRows}</tbody>
+        </table>
+      </div>
+      <div class="report-footer-page">- 3 -</div>
+    </div>
+
+    <!-- ══════ 별첨 3: 저장된 시나리오 — 종합 평가 매트릭스 ══════ -->
+    <div class="report-page-break">
+      <div class="appendix-label"><div class="appendix-tag">별첨 3</div><div class="appendix-title">저장된 시나리오 비교 — 종합 평가 매트릭스</div></div>
+      <div class="report-section report-radar-row">${radarSvgHtml}</div>
+      <div class="report-footer-page">- 4 -</div>
+    </div>
+    ` : ""}
   `;
 }
 
