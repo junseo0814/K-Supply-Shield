@@ -463,8 +463,12 @@
 
         <!-- 탭4: 이력 관리 -->
         <div id="proc-tab-history" hidden>
-          <div class="stock-note">과거 이력은 mock 데이터입니다 — 실 조달 이력 관리 시스템 연동 필요. "조달 시뮬레이션" 탭에서 확정한 조달안은 실시간으로 이 목록 위에 추가됩니다.</div>
-          <div class="panel-box-flush"><div class="table-scroll"><table class="data-table" id="history-table"></table></div></div>
+          <div class="stock-note">"조달 시뮬레이션" 탭에서 옵션을 선택하고 "이 조달안으로 확정"을 누르면 이 목록에 실시간으로 기록됩니다.</div>
+          <div class="scen-empty-state" id="history-empty-state" hidden>
+            확정된 조달 이력이 없습니다.<br>
+            <b>조달 시뮬레이션</b> 탭에서 원하는 옵션을 선택한 뒤 "이 조달안으로 확정"을 눌러보세요.
+          </div>
+          <div class="panel-box-flush" id="history-table-wrap" hidden><div class="table-scroll"><table class="data-table" id="history-table"></table></div></div>
         </div>
 
       </div>

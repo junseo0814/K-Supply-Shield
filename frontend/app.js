@@ -117,7 +117,7 @@ function loadScenariosFromStorage() {
   }
 }
 
-// 조달 시뮬레이션에서 "확정"한 조달안 — MOCK_PROC_HISTORY 위에 누적 표시된다.
+// 조달 시뮬레이션에서 "확정"한 조달안이 여기 누적된다 (실 조달 이력 시스템 부재로 세션 내 기록만 유지).
 const PROC_HISTORY_STORAGE_KEY = "ksupply_confirmed_proc_history";
 function saveProcHistoryToStorage() {
   sessionStorage.setItem(PROC_HISTORY_STORAGE_KEY, JSON.stringify(state.confirmedProcHistory));
@@ -135,17 +135,6 @@ const PROC_METHODS = [
   { key: "futures", label: "선물 계약" }, { key: "pooled", label: "공동 비축" },
 ];
 const PROC_RISK_LEVELS = [{ key: "low", label: "Low" }, { key: "medium", label: "Medium" }, { key: "high", label: "High" }];
-const MATRIX_OWNERS = ["김민준", "이서연", "박도윤", "최지우", "정하은", "한서준", "오하윤"]; // MOCK — 실제 담당자 배정 시스템 부재로 임시 배정
-const MOCK_PROC_HISTORY = [
-  { date: "2026-07-25", mineral: "리튬 (Lithium)", action: "조달 발주", qty: 800, owner: "이서연", status: "완료" },
-  { date: "2026-07-22", mineral: "코발트 (Cobalt)", action: "긴급 조달", qty: 300, owner: "김민준", status: "진행중" },
-  { date: "2026-07-18", mineral: "니켈 (Nickel)", action: "입고", qty: 1200, owner: "최지우", status: "완료" },
-  { date: "2026-07-14", mineral: "희토류 (Rare Earths)", action: "장기 계약 체결", qty: 500, owner: "박도윤", status: "완료" },
-  { date: "2026-07-09", mineral: "흑연 (Graphite)", action: "입고", qty: 2000, owner: "정하은", status: "완료" },
-  { date: "2026-07-03", mineral: "코발트 (Cobalt)", action: "조달 발주", qty: 400, owner: "김민준", status: "지연" },
-]; // MOCK DATA — 실 조달 이력 시스템 연동 필요. 조달 시뮬레이션에서 "확정"한 항목은
-   // state.confirmedProcHistory(sessionStorage 영속)에 별도 누적되어 이 목록 위에 표시된다.
-
 const SHOCK_TYPES = [
   { key: "export", label: "수출 규제 (중국/콩고 등 주요국)" },
   { key: "logistics", label: "물류 차단 (항만 봉쇄, 운임 급등)" },
@@ -650,7 +639,6 @@ function setupProcSimTab() {
       qty: state.procQty,
       owner: "홍길동 사무관",
       status: "진행중",
-      confirmed: true,
     };
     state.confirmedProcHistory.unshift(entry);
     saveProcHistoryToStorage();
@@ -781,7 +769,7 @@ function renderProcHHI(m) {
     </div>`).join("") + `<div class="hhi-note">┊ 권고 HHI 2500 이하 (${m ? m.key.replace(/\s*\(.*\)/, "") : ""} 중국 광산 점유율 ${share}% 기반 추정)</div>`;
 }
 
-// 의사결정 매트릭스: 7개 광물 전체 실계산(시뮬레이션+비축분석) 기반. 담당자/진행상태만 mock.
+// 의사결정 매트릭스: 7개 광물 전체 실계산(시뮬레이션+비축분석) 기반.
 async function loadMatrixData() {
   const keys = Object.keys(state.minerals);
   const results = await Promise.all(keys.map(async (key) => {
@@ -805,15 +793,13 @@ function renderMatrixTable() {
   rows = rows.filter(({ r }) => state.matrixRiskFilter === "all" || r.risk_level === state.matrixRiskFilter);
   rows = [...rows].sort((a, b) => b.r.restriction_pct - a.r.restriction_pct);
 
-  const html = rows.map(({ key, r, s }, idx) => {
+  const html = rows.map(({ key, r, s }) => {
     const shortName = key.replace(/\s*\(.*\)/, "");
     const riskLabel = r.risk_level === "HIGH" ? "위험" : r.risk_level === "MEDIUM" ? "심각" : "정상";
     const riskBg = r.risk_level === "HIGH" ? "var(--danger)" : r.risk_level === "MEDIUM" ? "var(--warning)" : "var(--success)";
     const actionKey = s.recommendation.key; // hold/combined/import — 실계산 결과
     const actionLabel = actionKey === "import" ? "긴급조달" : actionKey === "combined" ? "모니터링" : "유지";
     const actionBg = actionKey === "import" ? "var(--danger)" : actionKey === "combined" ? "var(--multiplier-blue)" : "var(--success)";
-    const step = actionKey === "import" ? 1 : actionKey === "combined" ? 2 : 4; // 권고조치 기반 근사 (실 워크플로 시스템 부재)
-    const steps = [0, 1, 2, 3].map((i) => `<div class="step-seg ${i < step ? "done" : ""}"></div>`).join("");
     const rowBg = r.risk_level === "HIGH" ? "background:rgba(192,57,43,0.08)" : r.risk_level === "MEDIUM" ? "background:rgba(230,126,34,0.08)" : "";
     return `<tr style="${rowBg}">
       <td>${shortName}</td>
@@ -821,8 +807,6 @@ function renderMatrixTable() {
       <td><span class="risk-badge" style="background:${riskBg};color:#fff">${riskLabel}</span></td>
       <td>${r.restriction_pct}%</td>
       <td><span class="risk-badge" style="background:${actionBg};color:#fff">${actionLabel}</span></td>
-      <td>${MATRIX_OWNERS[idx % MATRIX_OWNERS.length]}</td>
-      <td><div class="step-track">${steps}</div></td>
       <td style="white-space:nowrap">
         <button type="button" class="tbl-btn-ghost" data-detail="${key}">상세보기</button>
         <button type="button" class="tbl-btn-solid" data-request="${key}">조달요청</button>
@@ -830,23 +814,27 @@ function renderMatrixTable() {
     </tr>`;
   }).join("");
   document.getElementById("matrix-table").innerHTML = `
-    <thead><tr><th>광물</th><th>현재비축</th><th>위험도</th><th>충격가능성</th><th>권고조치</th><th>담당자</th><th>진행상태</th><th>액션</th></tr></thead>
+    <thead><tr><th>광물</th><th>현재비축</th><th>위험도</th><th>충격가능성</th><th>권고조치</th><th>액션</th></tr></thead>
     <tbody>${html}</tbody>`;
 }
 
 function renderHistoryTable() {
+  const rows = state.confirmedProcHistory || [];
+  document.getElementById("history-empty-state").hidden = rows.length > 0;
+  document.getElementById("history-table-wrap").hidden = rows.length === 0;
+  if (!rows.length) return;
+
   const statusColor = { "완료": "var(--success)", "진행중": "var(--multiplier-blue)", "지연": "var(--danger)" };
-  const combined = [...(state.confirmedProcHistory || []), ...MOCK_PROC_HISTORY];
-  const rows = combined.map((h, idx) => {
+  const html = rows.map((h, idx) => {
     const shortName = h.mineral.replace(/\s*\(.*\)/, "");
     return `<tr class="${idx % 2 === 1 ? "zebra" : ""}">
-      <td>${h.date}${h.confirmed ? ' <span class="option-pick-tag">확정</span>' : ""}</td><td>${shortName}</td><td>${h.action}</td><td>${h.qty.toLocaleString("ko-KR")}톤</td><td>${h.owner}</td>
+      <td>${h.date}</td><td>${shortName}</td><td>${h.action}</td><td>${h.qty.toLocaleString("ko-KR")}톤</td><td>${h.owner}</td>
       <td><span class="risk-badge" style="background:${statusColor[h.status]};color:#fff">${h.status}</span></td>
     </tr>`;
   }).join("");
   document.getElementById("history-table").innerHTML = `
     <thead><tr><th>일자</th><th>광물</th><th>액션 유형</th><th>수량</th><th>담당자</th><th>상태</th></tr></thead>
-    <tbody>${rows}</tbody>`;
+    <tbody>${html}</tbody>`;
 }
 
 function buildRadarSVG(categories, options) {
