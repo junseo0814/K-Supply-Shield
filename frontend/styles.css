@@ -1769,9 +1769,13 @@ a.alert-item-title:hover { color: var(--primary); text-decoration: underline; }
    860px 이하에서만 일어나지만, 좌우 고정폭 사이드패널(300/280/320px)을 쓰는
    3단 레이아웃은 이 구간에서 중앙 콘텐츠가 지나치게 좁아지므로 먼저 세로로 쌓는다. ── */
 @media (max-width: 1180px) {
-  .sim-layout { flex-direction: column; }
+  /* .sim-layout의 align-items:flex-start는 데스크톱 3단(가로) 레이아웃에서 좌우 sticky
+     패널의 세로 정렬용이었는데, 세로 스택(column)으로 바뀌는 이 구간부터는 가로(교차축)
+     정렬로 작용해 .sim-center가 폭을 꽉 채우지 못하고 콘텐츠 크기만큼만 좁게 잡히는
+     버그가 있었다 (모바일에서 화면 오른쪽에 빈 여백이 생기는 원인) — stretch로 되돌린다. */
+  .sim-layout { flex-direction: column; align-items: stretch; }
   .sim-left, .sim-right { width: 100%; position: static; max-height: none; overflow-y: visible; }
-  .proc-sim-layout { flex-direction: column; }
+  .proc-sim-layout { flex-direction: column; align-items: stretch; }
   .proc-sim-left { width: 100%; }
   .option-grid { grid-template-columns: repeat(2, 1fr); }
 }
@@ -1781,12 +1785,12 @@ a.alert-item-title:hover { color: var(--primary); text-decoration: underline; }
 }
 
 @media (max-width: 860px) {
-  .sim-layout { flex-direction: column; padding: clamp(12px, 4vw, 20px); }
+  .sim-layout { flex-direction: column; align-items: stretch; padding: clamp(12px, 4vw, 20px); }
   .sim-left, .sim-right { width: 100%; }
   .sim-kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .proc-page-body { padding: clamp(12px, 4vw, 20px); }
   .stock-card-grid { grid-template-columns: 1fr; }
-  .proc-sim-layout { flex-direction: column; }
+  .proc-sim-layout { flex-direction: column; align-items: stretch; }
   .proc-sim-left { width: 100%; }
   .option-grid { grid-template-columns: 1fr; }
   .scen-grid { grid-template-columns: 1fr !important; }
