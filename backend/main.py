@@ -218,4 +218,7 @@ app.mount("/static", NoCacheStaticFiles(directory=FRONTEND_DIR), name="static")
 @app.get("/compare")
 @app.get("/reports")
 def index():
-    return FileResponse(os.path.join(FRONTEND_DIR, 'index.html'))
+    # /static/* 정적 파일은 NoCacheStaticFiles로 캐시 방지 중인데, index.html 자체는
+    # 빠져 있어서 브라우저가 통째로 캐싱해버리면 새 app.js를 가리키는 최신 index.html도
+    # 못 받아 배포 후에도 예전 화면이 계속 보이는 문제가 있었다 — 여기도 동일 적용.
+    return FileResponse(os.path.join(FRONTEND_DIR, 'index.html'), headers={"Cache-Control": "no-cache"})
