@@ -1775,7 +1775,10 @@ function renderDashboardPriority(scan) {
 
 function renderDashboard() {
   if (!state.mineralKey) return;
-  renderDashboardAlert();
+  // 뉴스 기반 신호(mineralNewsAlerts)가 아직 안 왔는데 모달을 바로 띄우면, 의존도·고위험
+  // 광물만 반쪽으로 보였다가 뉴스가 늦게 도착해서야 채워지는 게 보인다 — 뉴스 응답까지
+  // 받은 뒤에 한 번에 완성된 내용으로 띄운다(loadMineralNewsAlerts가 끝나면 알아서 호출).
+  if (state.mineralNewsAlerts !== null) renderDashboardAlert();
   renderDashboardKPI();
   if (!state.dashboardScan) loadDashboardScan();
   if (state.kotraNews === null) loadKotraNews();
