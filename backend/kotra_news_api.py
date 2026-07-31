@@ -82,21 +82,34 @@ def parse_items(raw_json):
 
 
 def _fetch_one(kw, rows_per_keyword):
+    """실패하면 None, "결과 0건"이면 빈 리스트를 반환한다 — 이 둘을 구분해야 위(호출부)에서
+    "API 호출 자체가 실패했다"를 "그냥 뉴스가 없다"로 착각해 빈 결과를 캐싱하지 않는다."""
     try:
         return parse_items(fetch_raw(search1=kw, num_of_rows=rows_per_keyword))
     except Exception:
-        return []
+        return None
+
+
+# 키워드 수만큼(13~22개) 한꺼번에 병렬 호출하면 공공데이터포털의 초당 호출 제한에 걸려
+# 전체가 동시에 실패하는 경우가 있었다(같은 서비스키를 kotra-news + mineral-news-alerts
+# 두 엔드포인트가 동시에 쓰기 때문에 순간 동시 요청 수가 22개까지 치솟는다) — 동시 실행
+# 수를 낮춰 순간 부하를 줄인다.
+MAX_CONCURRENT_REQUESTS = 6
 
 
 def fetch_recent_by_keywords(keywords=None, rows_per_keyword=10):
     """여러 키워드로 병렬 검색해 중복(id 기준) 제거 후 날짜 내림차순으로 합쳐 반환한다.
-    키워드별 API 호출이 순차 실행 시 10초 이상 걸려 스레드풀로 병렬화했다."""
+    키워드별 API 호출이 순차 실행 시 10초 이상 걸려 스레드풀로 병렬화했다.
+    모든 키워드 호출이 실패하면(레이트리밋 등) RuntimeError를 던진다 — 호출부가 이걸
+    "뉴스 0건"으로 착각해 빈 결과를 캐싱하지 않도록 하기 위함."""
     keywords = keywords or DEFAULT_KEYWORDS
+    with ThreadPoolExecutor(max_workers=min(MAX_CONCURRENT_REQUESTS, len(keywords))) as ex:
+        results = list(ex.map(lambda kw: _fetch_one(kw, rows_per_keyword), keywords))
+    if all(r is None for r in results):
+        raise RuntimeError("KOTRA API 호출이 모든 키워드에서 실패했습니다 (레이트리밋 또는 네트워크 문제로 추정).")
     seen = {}
-    with ThreadPoolExecutor(max_workers=len(keywords)) as ex:
-        results = ex.map(lambda kw: _fetch_one(kw, rows_per_keyword), keywords)
     for items in results:
-        for it in items:
+        for it in (items or []):
             seen[it["id"]] = it
     return sorted(seen.values(), key=lambda x: x["date"] or "", reverse=True)
 
@@ -131,12 +144,15 @@ def _is_recent(date_str):
 
 def mineral_news_alerts(rows_per_keyword=8):
     """{광물 짧은 이름: 위험 신호가 감지된 최신 기사} 형태로 반환한다.
-    신호가 없거나(위험 단어 미포함) 오래된(180일 초과) 기사만 있는 광물은 제외한다."""
-    with ThreadPoolExecutor(max_workers=len(MINERAL_SHORT_NAMES)) as ex:
+    신호가 없거나(위험 단어 미포함) 오래된(365일 초과) 기사만 있는 광물은 제외한다.
+    광물 9종 전부 호출이 실패하면 RuntimeError를 던진다(캐싱 방지 목적, fetch_recent_by_keywords와 동일 이유)."""
+    with ThreadPoolExecutor(max_workers=min(MAX_CONCURRENT_REQUESTS, len(MINERAL_SHORT_NAMES))) as ex:
         results = dict(zip(MINERAL_SHORT_NAMES, ex.map(lambda kw: _fetch_one(kw, rows_per_keyword), MINERAL_SHORT_NAMES)))
+    if all(v is None for v in results.values()):
+        raise RuntimeError("KOTRA API 호출이 모든 광물에서 실패했습니다 (레이트리밋 또는 네트워크 문제로 추정).")
     alerts = {}
     for name, items in results.items():
-        hit = next((it for it in items if _has_danger_word(it.get("title")) and _is_recent(it.get("date"))), None)
+        hit = next((it for it in (items or []) if _has_danger_word(it.get("title")) and _is_recent(it.get("date"))), None)
         if hit:
             alerts[name] = hit
     return alerts
