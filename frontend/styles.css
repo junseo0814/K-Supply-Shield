@@ -769,9 +769,9 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   flex-shrink: 0;
   cursor: pointer;
 }
-.top-nav-logo { height: 28px; width: auto; display: block; }
-.top-nav-logo-kcess { height: 38px; }
-.top-nav-divider { width: 1px; height: 30px; background: var(--border-strong); display: block; }
+.top-nav-logo { height: 40px; width: auto; display: block; }
+.top-nav-logo-kcess { height: 40px; }
+.top-nav-divider { width: 1px; height: 36px; background: var(--border-strong); display: block; }
 .top-nav-title {
   font-size: 22px;
   font-weight: 800;
