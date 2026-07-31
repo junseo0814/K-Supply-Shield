@@ -69,6 +69,7 @@ const state = {
   stockpileResult: null,
   industryExpanded: false, // 모바일: 산업별 파급 손실 목록 전체 펼침 여부
   dashboardScan: null, // 실시간 관제 — 9개 광물 전체 자동 스캔 결과 (loadDashboardScan)
+  mineralNewsAlerts: null, // 실시간 관제 — 광물별 뉴스 기반 조기경보 (loadMineralNewsAlerts)
   altSupply: null, // 충격 시뮬레이터 — 대체 공급국 제안(crisis/alt) 최신 계산 결과, 리포트에서 재사용
 
   // 충격 시뮬레이터 좌측 패널 — ②충격유형/④지속기간/⑤대상국가 (분류·기록용, 레온티에프 계산에는 영향 없음)
@@ -1589,10 +1590,15 @@ function renderDashboardAlert() {
   const minerals = Object.entries(state.minerals);
   const highRisk = minerals.filter(([, m]) => m.shock_example >= 50);
   const depAlert = COUNTRY_DEPENDENCY.filter((c) => c.dependency >= DEPENDENCY_ALERT_THRESHOLD);
+  const newsAlerts = state.mineralNewsAlerts || {};
+  const newsNames = Object.keys(newsAlerts);
   const banner = document.getElementById("dashboard-alert");
-  if (highRisk.length || depAlert.length) {
+  if (highRisk.length || depAlert.length || newsNames.length) {
     banner.classList.add("show");
     const parts = [];
+    if (newsNames.length) {
+      parts.push(`${newsNames.join("·")} 관련 최근 수출통제·쿼터 뉴스 감지 (KOTRA)`);
+    }
     if (depAlert.length) {
       const maxDep = Math.max(...depAlert.map((c) => c.dependency));
       parts.push(`${depAlert.map((c) => c.name).join("·")} 의존도 ${maxDep}% (EU CRMA 임계값 65% 초과)`);
@@ -1660,18 +1666,35 @@ async function loadDashboardScan() {
 }
 
 function renderDashboardScanList(scan) {
+  const newsAlerts = state.mineralNewsAlerts || {};
   const sorted = [...scan].sort((a, b) => b.sim.total_prod - a.sim.total_prod).slice(0, 5);
   const maxVal = sorted.length ? sorted[0].sim.total_prod : 1;
   document.getElementById("dashboard-scan-list").innerHTML = sorted.map(({ key, sim }) => {
     const shortName = key.replace(/\s*\(.*\)/, "");
     const color = sim.risk_level === "HIGH" ? "var(--danger)" : sim.risk_level === "MEDIUM" ? "var(--warning)" : "var(--success)";
+    const newsHit = newsAlerts[shortName];
+    const newsBadge = newsHit
+      ? `<a href="${newsHit.url}" target="_blank" rel="noopener" class="news-alert-link" title="${newsHit.title}">📰 뉴스</a>`
+      : "";
     return `
       <div class="industry-row">
         <div class="industry-name">${shortName}</div>
         <div class="industry-track"><div class="industry-bar" style="width:${Math.max(4, (sim.total_prod / maxVal) * 100).toFixed(0)}%; background:${color}"></div></div>
-        <div class="industry-value"><span>${fmt(sim.total_prod, 2)}조</span><span class="risk-badge ${sim.risk_level}">${sim.risk_level}</span></div>
+        <div class="industry-value"><span>${fmt(sim.total_prod, 2)}조</span><span class="risk-badge ${sim.risk_level}">${sim.risk_level}</span>${newsBadge}</div>
       </div>`;
   }).join("");
+}
+
+// 광물별 뉴스 기반 조기경보 — KOTRA 단신속보뉴스에서 광물명으로 개별 검색해, 제목에
+// 수출통제·금수 등 위험 신호 단어가 포함된 최근(365일 이내) 기사가 있으면 태깅한다.
+async function loadMineralNewsAlerts() {
+  try {
+    state.mineralNewsAlerts = await fetchJSON(`${API}/api/mineral-news-alerts`);
+  } catch (e) {
+    state.mineralNewsAlerts = {};
+  }
+  renderDashboardAlert();
+  if (state.dashboardScan) renderDashboardScanList(state.dashboardScan);
 }
 
 // 각 광물의 방출 우선순위(/api/stockpile priority)는 모두 같은 '광산품' 유발계수 열을
@@ -1734,6 +1757,7 @@ function renderDashboard() {
   if (!state.dashboardScan) loadDashboardScan();
   if (state.kotraNews === null) loadKotraNews();
   else renderKotraNews();
+  if (state.mineralNewsAlerts === null) loadMineralNewsAlerts();
 }
 
 // ── ⑤ 정책·보고서 (data/publications.csv, data/report_teasers.csv 직접 편집 관리) ──

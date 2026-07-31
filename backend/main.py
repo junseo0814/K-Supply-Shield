@@ -159,6 +159,27 @@ def get_kotra_news():
     return items
 
 
+_mineral_news_alert_cache = {"data": None, "fetched_at": 0}
+
+
+@app.get("/api/mineral-news-alerts")
+def get_mineral_news_alerts():
+    """광물별로 KOTRA 뉴스를 개별 검색해, 제목에 수출통제·금수 등 위험 신호 단어가 있는
+    최신 기사가 있으면 그 광물을 조기경보 대상으로 태깅한다 (실시간 관제 조기경보용)."""
+    now = time.time()
+    if _mineral_news_alert_cache["data"] is not None and now - _mineral_news_alert_cache["fetched_at"] < KOTRA_NEWS_CACHE_TTL:
+        return _mineral_news_alert_cache["data"]
+    try:
+        alerts = kotra_news_api.mineral_news_alerts(rows_per_keyword=8)
+    except Exception as e:
+        if _mineral_news_alert_cache["data"] is not None:
+            return _mineral_news_alert_cache["data"]
+        raise HTTPException(status_code=502, detail=f"KOTRA API 호출 실패: {e}")
+    _mineral_news_alert_cache["data"] = alerts
+    _mineral_news_alert_cache["fetched_at"] = now
+    return alerts
+
+
 # 아래 3개는 현재 data/*.csv 직접 수기 편집으로 관리한다 (프로토타입 단계).
 # 실 API 연동 시에는 이 함수 내부만 외부 API 호출로 교체하면 되고, 프론트엔드는 그대로 둔다.
 @app.get("/api/alerts")

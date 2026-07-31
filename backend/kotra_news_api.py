@@ -12,6 +12,7 @@ search1은 제목 키워드 필터로 보인다(공식 문서 미확인 — 응�
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
 
 import requests
 from dotenv import load_dotenv
@@ -98,3 +99,44 @@ def fetch_recent_by_keywords(keywords=None, rows_per_keyword=10):
         for it in items:
             seen[it["id"]] = it
     return sorted(seen.values(), key=lambda x: x["date"] or "", reverse=True)
+
+
+# 광물별 뉴스 기반 조기경보 — 광물 이름을 키워드로 개별 검색해, 제목에 위험 신호 단어가
+# 포함된 최신 기사가 있으면 그 광물을 "뉴스로 위험 신호가 감지됨"으로 태깅한다.
+# (기사 본문은 API로 못 가져와 제목만으로 판단 — 과도하게 넓은 단어는 오탐이 잦아서
+# 뺐다. "제한"/"규제"/"관세"처럼 광물과 무관한 일반 무역기사에도 흔한 단어는 제외.)
+MINERAL_SHORT_NAMES = ["흑연", "리튬", "코발트", "니켈", "망간", "희토류", "텅스텐", "게르마늄", "갈륨"]
+DANGER_WORDS = ["수출통제", "수출 통제", "수출금지", "수출 금지", "수입금지", "수입 금지", "금수", "봉쇄", "쿼터"]
+# KOTRA 단신속보뉴스 데이터셋 자체가 얇아서(세션 중 확인된 특성), 위험 단어가 걸려도
+# 몇 년 지난 기사가 걸리는 경우가 있다 — 최근 기사가 아니면 "지금의" 조기경보로 보기
+# 어려우므로 최근 180일 이내 기사만 인정한다.
+RECENT_WINDOW_DAYS = 365
+
+
+def _has_danger_word(title):
+    if not title:
+        return False
+    return any(w in title for w in DANGER_WORDS)
+
+
+def _is_recent(date_str):
+    if not date_str:
+        return False
+    try:
+        d = datetime.strptime(date_str[:10], "%Y-%m-%d")
+    except ValueError:
+        return False
+    return d >= datetime.now() - timedelta(days=RECENT_WINDOW_DAYS)
+
+
+def mineral_news_alerts(rows_per_keyword=8):
+    """{광물 짧은 이름: 위험 신호가 감지된 최신 기사} 형태로 반환한다.
+    신호가 없거나(위험 단어 미포함) 오래된(180일 초과) 기사만 있는 광물은 제외한다."""
+    with ThreadPoolExecutor(max_workers=len(MINERAL_SHORT_NAMES)) as ex:
+        results = dict(zip(MINERAL_SHORT_NAMES, ex.map(lambda kw: _fetch_one(kw, rows_per_keyword), MINERAL_SHORT_NAMES)))
+    alerts = {}
+    for name, items in results.items():
+        hit = next((it for it in items if _has_danger_word(it.get("title")) and _is_recent(it.get("date"))), None)
+        if hit:
+            alerts[name] = hit
+    return alerts
