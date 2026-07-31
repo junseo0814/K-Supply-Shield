@@ -230,9 +230,10 @@
           <div class="field-block">
             <label class="field-block-label" for="import-input">한국 연간 수입 규모 (조원)</label>
             <input type="number" id="import-input" min="0" step="0.01">
+            <div class="metric-sub" style="margin-top:4px">관세청 실측 수입액 기준</div>
           </div>
 
-          <div class="shock-preview">
+          <div class="shock-preview" id="shock-preview" hidden>
             <div class="shock-preview-label">예상 직접 충격 미리보기</div>
             <div class="shock-preview-value" id="shock-preview-value">-</div>
             <div class="shock-preview-formula" id="shock-preview-formula"></div>

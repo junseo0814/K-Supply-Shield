@@ -261,6 +261,7 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   padding: 16px;
   transition: border-color .2s ease;
 }
+.shock-preview[hidden] { display: none; }
 .shock-preview-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); }
 .shock-preview-value {
   font-size: 26px;
@@ -693,6 +694,7 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   border: 1px solid #c1cfe2;
   border-radius: var(--radius-sm);
   padding: 12px 14px;
+  word-break: keep-all;
 }
 
 /* ── Top info bar ──────────────────────────────────────── */

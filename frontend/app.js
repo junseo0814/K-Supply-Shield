@@ -73,9 +73,10 @@ const state = {
   altSupply: null, // 충격 시뮬레이터 — 대체 공급국 제안(crisis/alt) 최신 계산 결과, 리포트에서 재사용
 
   // 충격 시뮬레이터 좌측 패널 — ②충격유형/④지속기간/⑤대상국가 (분류·기록용, 레온티에프 계산에는 영향 없음)
-  simShockType: "export",
-  simDuration: "6",
-  simCountries: { china: true, congo: true, chile: false, australia: false, philippines: false, indonesia: false, other: false },
+  // 아무것도 사전 선택돼 있지 않게 시작 — 사용자가 직접 골라야 "실행"이 된다.
+  simShockType: null,
+  simDuration: null,
+  simCountries: { china: false, congo: false, chile: false, australia: false, philippines: false, indonesia: false, other: false },
   simRunning: false,
   simRanAt: null,
 
@@ -937,7 +938,10 @@ function setAccent(mineralKey) {
 function selectMineral(key) {
   state.mineralKey = key;
   const m = state.minerals[key];
-  state.restrictionPct = m.shock_example;
+  // 광물마다 미리 정해둔 "예시 위기 수준"(shock_example)으로 바로 시작하면 이미 심각/위험
+  // 단계라 슬라이더를 움직이며 경계→주의→심각→위험 단계 변화를 보여줄 여지가 없다 —
+  // 항상 최소값(10%)에서 시작해 사용자가 직접 올려보게 한다.
+  state.restrictionPct = 10;
   state.importTrillion = Math.round((m.korea_import_bn / 10000) * 100) / 100; // 억원 → 조원
 
   const shortName = key.replace(/\s*\(.*\)/, "");
@@ -1017,6 +1021,10 @@ function setupSimulatorPanel() {
   });
 
   document.getElementById("run-sim-btn").addEventListener("click", () => {
+    if (!state.simShockType || !state.simDuration) {
+      alert("② 충격 유형과 ④ 충격 지속 기간을 먼저 선택해주세요.");
+      return;
+    }
     const btn = document.getElementById("run-sim-btn");
     state.simRunning = true;
     btn.textContent = "분석 중...";
@@ -1027,15 +1035,23 @@ function setupSimulatorPanel() {
       btn.textContent = "▶ 시뮬레이션 실행";
       btn.disabled = false;
       document.getElementById("sim-last-run").textContent = `마지막 실행: ${state.simRanAt.toLocaleTimeString("ko-KR")}`;
+      document.getElementById("shock-preview").hidden = false;
+      updatePreview();
       runSimulation();
       runStockpile();
     }, 1200);
   });
 
   document.getElementById("sim-reset-btn").addEventListener("click", () => {
-    state.simShockType = "export";
-    state.simDuration = "6";
-    state.simCountries = { china: true, congo: true, chile: false, australia: false, philippines: false, indonesia: false, other: false };
+    state.simShockType = null;
+    state.simDuration = null;
+    state.simCountries = { china: false, congo: false, chile: false, australia: false, philippines: false, indonesia: false, other: false };
+    state.restrictionPct = 10;
+    document.getElementById("restriction-range").value = 10;
+    document.getElementById("restriction-range").setAttribute("aria-valuetext", "10%");
+    document.getElementById("restriction-value").textContent = "10%";
+    document.getElementById("shock-preview").hidden = true;
+    updateIntensityLabel();
     state.simRanAt = null;
     document.getElementById("sim-last-run").textContent = "아직 실행되지 않음";
     renderShockTypes();
