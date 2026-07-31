@@ -90,11 +90,11 @@ def _fetch_one(kw, rows_per_keyword):
         return None
 
 
-# 키워드 수만큼(13~22개) 한꺼번에 병렬 호출하면 공공데이터포털의 초당 호출 제한에 걸려
-# 전체가 동시에 실패하는 경우가 있었다(같은 서비스키를 kotra-news + mineral-news-alerts
-# 두 엔드포인트가 동시에 쓰기 때문에 순간 동시 요청 수가 22개까지 치솟는다) — 동시 실행
-# 수를 낮춰 순간 부하를 줄인다.
-MAX_CONCURRENT_REQUESTS = 6
+# 한때 동시 요청 수를 6개로 제한했었는데, 오히려 13개 키워드가 3배치(6+6+1)로 나뉘어
+# 순차 실행되면서 전체 응답이 30초 이상 걸려 프런트엔드에서 타임아웃/실패로 보이는
+# 역효과가 있었다(2026-07-31 실측). data.go.kr이 동시 호출 자체를 막는다는 근거는
+# 없었으므로, 키워드 수만큼 그대로 병렬 실행해 원래의 빠른 응답 속도로 되돌린다.
+MAX_CONCURRENT_REQUESTS = 20
 
 
 def fetch_recent_by_keywords(keywords=None, rows_per_keyword=10):
