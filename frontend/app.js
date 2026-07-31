@@ -1452,6 +1452,7 @@ function setupAuth() {
     sessionStorage.removeItem("ksupply_params");
     sessionStorage.removeItem(SCENARIO_STORAGE_KEY);
     sessionStorage.removeItem(PROC_HISTORY_STORAGE_KEY);
+    sessionStorage.removeItem(ALERT_MODAL_DISMISSED_KEY);
     showLogin();
   };
   document.getElementById("logout-btn").addEventListener("click", doLogout);
@@ -1490,7 +1491,7 @@ function setupViewTabs() {
   };
   document.getElementById("view-tabs").addEventListener("click", onTabClick);
   document.getElementById("mobile-tabbar").addEventListener("click", onTabClick);
-  document.getElementById("dashboard-alert").addEventListener("click", onTabClick);
+  document.getElementById("alert-modal-goto").addEventListener("click", onTabClick);
   document.querySelector(".top-nav-brand").addEventListener("click", () => { window.location.href = "/"; });
 }
 function switchView(view) {
@@ -1539,6 +1540,11 @@ function setupDashboard() {
   window.addEventListener("message", (e) => {
     if (e.data && e.data.type === "countryClick") renderCountryPanel(e.data);
   });
+
+  document.getElementById("alert-modal-confirm").addEventListener("click", () => {
+    document.getElementById("alert-modal-backdrop").hidden = true;
+    sessionStorage.setItem(ALERT_MODAL_DISMISSED_KEY, "1");
+  });
 }
 
 function renderCountryPanel(info) {
@@ -1586,31 +1592,48 @@ const COUNTRY_DEPENDENCY = [
 ];
 const DEPENDENCY_ALERT_THRESHOLD = 65;
 
+// 조기경보 모달을 이번 로그인 세션 동안 이미 "확인"했는지 — sessionStorage라 로그아웃/재로그인 시 초기화된다.
+const ALERT_MODAL_DISMISSED_KEY = "ksupply_alert_modal_dismissed";
+
 function renderDashboardAlert() {
   const minerals = Object.entries(state.minerals);
   const highRisk = minerals.filter(([, m]) => m.shock_example >= 50);
   const depAlert = COUNTRY_DEPENDENCY.filter((c) => c.dependency >= DEPENDENCY_ALERT_THRESHOLD);
   const newsAlerts = state.mineralNewsAlerts || {};
   const newsNames = Object.keys(newsAlerts);
-  const banner = document.getElementById("dashboard-alert");
-  if (highRisk.length || depAlert.length || newsNames.length) {
-    banner.classList.add("show");
-    const parts = [];
-    if (newsNames.length) {
-      parts.push(`${newsNames.join("·")} 관련 최근 수출통제·쿼터 뉴스 감지 (KOTRA)`);
-    }
-    if (depAlert.length) {
-      const maxDep = Math.max(...depAlert.map((c) => c.dependency));
-      parts.push(`${depAlert.map((c) => c.name).join("·")} 의존도 ${maxDep}% (EU CRMA 임계값 65% 초과)`);
-    }
-    if (highRisk.length) {
-      const shortName = highRisk[0][0].replace(/\s*\(.*\)/, "");
-      parts.push(`${shortName} 등 ${highRisk.length}개 광물 공급 위험`);
-    }
-    document.getElementById("dashboard-alert-text").textContent = `⚠ ${parts.join(" · ")} — 즉각 조치 필요`;
-  } else {
-    banner.classList.remove("show");
+  const modal = document.getElementById("alert-modal-backdrop");
+
+  if (!(highRisk.length || depAlert.length || newsNames.length)) {
+    modal.hidden = true;
+    return;
   }
+  if (sessionStorage.getItem(ALERT_MODAL_DISMISSED_KEY) === "1") return;
+
+  const groups = [];
+  if (newsNames.length) {
+    groups.push(`
+      <div class="alert-modal-group">
+        <div class="alert-modal-group-title">📰 뉴스 기반 위험 신호 (KOTRA, 최근 1년 이내)</div>
+        ${newsNames.map((name) => `<div class="alert-modal-item">${name} — <a href="${newsAlerts[name].url}" target="_blank" rel="noopener">${newsAlerts[name].title}</a></div>`).join("")}
+      </div>`);
+  }
+  if (depAlert.length) {
+    groups.push(`
+      <div class="alert-modal-group">
+        <div class="alert-modal-group-title">🌍 수입의존도 임계값(EU CRMA 65%) 초과</div>
+        ${depAlert.map((c) => `<div class="alert-modal-item">${c.name} — 의존도 ${c.dependency}%</div>`).join("")}
+      </div>`);
+  }
+  if (highRisk.length) {
+    groups.push(`
+      <div class="alert-modal-group">
+        <div class="alert-modal-group-title">⚠ 공급 위험(HIGH) 광물 ${highRisk.length}종</div>
+        ${highRisk.map(([key, m]) => `<div class="alert-modal-item">${key.replace(/\s*\(.*\)/, "")} — 기본 공급제한율 ${m.shock_example}%</div>`).join("")}
+      </div>`);
+  }
+
+  document.getElementById("alert-modal-body").innerHTML = groups.join("");
+  modal.hidden = false;
 }
 
 function renderDashboardKPI() {

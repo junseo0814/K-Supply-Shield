@@ -43,6 +43,22 @@
 
   <div class="watermark-overlay" aria-hidden="true"></div>
 
+  <!-- 조기경보 모달: 로그인 후 실시간 관제 탭에 처음 진입했을 때, 위험 신호가 있으면
+       한 번 크게 띄운다. "확인"을 눌러야만 닫히고, 이후엔 이 로그인 세션 동안 다시 뜨지 않는다. -->
+  <div class="alert-modal-backdrop" id="alert-modal-backdrop" hidden>
+    <div class="alert-modal" role="alertdialog" aria-modal="true" aria-labelledby="alert-modal-title">
+      <div class="alert-modal-head">
+        <span class="alert-modal-icon" aria-hidden="true">⚠</span>
+        <span id="alert-modal-title" class="alert-modal-title">공급망 조기경보</span>
+      </div>
+      <div class="alert-modal-body" id="alert-modal-body"></div>
+      <div class="alert-modal-actions">
+        <button type="button" class="alert-modal-goto" id="alert-modal-goto" data-view="simulate">충격 시뮬레이터로 이동</button>
+        <button type="button" class="alert-modal-confirm" id="alert-modal-confirm">확인</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ───────────── 모바일 상단바 ───────────── -->
   <div class="mobile-topbar" id="mobile-topbar">
     <img class="mobile-topbar-logo" src="/static/assets/motie-logo-horizontal.png" alt="산업통상부">
@@ -101,11 +117,6 @@
       <div class="page-header-bar" id="dashboard-header-bar">
         <div class="page-header-title">실시간 관제</div>
         <div class="page-header-right"><div id="dashboard-last-update"></div></div>
-      </div>
-
-      <div class="dashboard-alert" id="dashboard-alert" role="alert" aria-live="polite">
-        <div class="dashboard-alert-text" id="dashboard-alert-text"></div>
-        <button type="button" class="dashboard-alert-cta" data-view="simulate">바로가기</button>
       </div>
 
       <section>
