@@ -41,59 +41,43 @@ function fillFor(info) {
 }
 
 var svg = d3.select('#map');
-var width = window.innerWidth, height = window.innerHeight;
-svg.attr('viewBox', '0 0 ' + width + ' ' + height);
 var projection = d3.geoNaturalEarth1();
 var path = d3.geoPath().projection(projection);
 var tooltip = document.getElementById('tooltip');
 var mode = 'all';
+var geoData = null;
 
-fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json')
-  .then(function(r){ return r.json(); })
-  .then(function(topo){
-    var geo = topojson.feature(topo, topo.objects.countries);
-    projection.fitSize([width - 8, height - 8], geo);
-    render(geo);
-  });
+// iframe이 부모 페이지 레이아웃(로그인 직후 대시보드가 자리잡는 애니메이션 등)에 완전히
+// 자리잡기 전에 이 스크립트가 실행되면 window.innerWidth/innerHeight가 0으로 읽혀서
+// projection.fitSize에 음수/0 크기가 들어가고, 그 결과 지도가 아예 안 보이거나 모든
+// 라벨이 한 점에 겹쳐 보이는 문제가 간헐적으로 있었다 — 매번 새로 읽고 리사이즈에도 대응한다.
+function getSize() {
+  var w = window.innerWidth || document.documentElement.clientWidth || 700;
+  var h = window.innerHeight || document.documentElement.clientHeight || 380;
+  return { w: w, h: h };
+}
 
 function getInfo(id){ return DATA[String(Number(id))]; }
 
-function render(geo){
-  var sel = svg.selectAll('path').data(geo.features);
-  sel.enter().append('path')
-    .attr('class', function(d){ return getInfo(d.id) ? 'country dep' : 'country'; })
-    .attr('d', path)
-    .attr('fill', function(d){ return fillFor(getInfo(d.id)); })
-    .on('mousemove', function(event, d){
-      var info = getInfo(d.id);
-      if (!info) { tooltip.style.display = 'none'; return; }
-      tooltip.style.display = 'block';
-      tooltip.style.left = (event.offsetX + 14) + 'px';
-      tooltip.style.top = (event.offsetY + 8) + 'px';
-      tooltip.innerHTML = '<b>' + info.name + '</b> · 의존도 ' + info.dependency + '% · ' + info.minerals;
-    })
-    .on('mouseleave', function(){ tooltip.style.display = 'none'; })
-    .on('click', function(event, d){
-      var info = getInfo(d.id);
-      if (!info) return;
-      parent.postMessage({ type: 'countryClick', ...info }, '*');
-    });
+var OFFSETS = {
+  156: [110, -70],   // 중국
+  180: [-110, -10],  // 콩고민주공화국
+  152: [-90, 50],    // 칠레
+  36:  [-10, 90],    // 호주
+  608: [70, 40],     // 필리핀
+  360: [40, 95]      // 인도네시아
+};
 
+function positionLabels(geo, size) {
   var labelsEl = document.getElementById('labels');
   labelsEl.style.position = 'absolute';
   labelsEl.style.inset = '0';
   labelsEl.style.pointerEvents = 'none';
+  labelsEl.innerHTML = '';
+  svg.selectAll('.leaders').remove();
   var leaderLayer = svg.append('g').attr('class', 'leaders');
-  var ids = Object.keys(DATA);
-  var OFFSETS = {
-    156: [110, -70],   // 중국
-    180: [-110, -10],  // 콩고민주공화국
-    152: [-90, 50],    // 칠레
-    36:  [-10, 90],    // 호주
-    608: [70, 40],     // 필리핀
-    360: [40, 95]      // 인도네시아
-  };
-  ids.forEach(function(id){
+
+  Object.keys(DATA).forEach(function(id){
     var feature = geo.features.filter(function(f){ return Number(f.id) === Number(id); })[0];
     if (!feature) return;
     var info = DATA[id];
@@ -101,8 +85,8 @@ function render(geo){
     if (!c || isNaN(c[0]) || isNaN(c[1])) c = path.bounds(feature).reduce(function(a,b){ return [(a[0]+b[0])/2, (a[1]+b[1])/2]; });
     if (!c || isNaN(c[0])) return;
     var offset = OFFSETS[id] || [80, -60];
-    var lx = Math.max(60, Math.min(width - 60, c[0] + offset[0]));
-    var ly = Math.max(20, Math.min(height - 20, c[1] + offset[1]));
+    var lx = Math.max(60, Math.min(size.w - 60, c[0] + offset[0]));
+    var ly = Math.max(20, Math.min(size.h - 20, c[1] + offset[1]));
 
     leaderLayer.append('circle').attr('cx', c[0]).attr('cy', c[1]).attr('r', 3).attr('fill', '#1B2556').attr('data-id', id);
     leaderLayer.append('line')
@@ -118,26 +102,58 @@ function render(geo){
     div.innerHTML = '<span class="dot">' + info.flag + '</span>' + info.name;
     div.addEventListener('click', function(){ parent.postMessage({ type: 'countryClick', ...info }, '*'); });
     labelsEl.appendChild(div);
+
+    var show = !(mode === 'risk' && info.level !== 'high');
+    if (!show) { div.style.display = 'none'; leaderLayer.selectAll('[data-id="' + id + '"]').style('display', 'none'); }
   });
 
   if (window.twemoji) twemoji.parse(labelsEl, { folder: 'svg', ext: '.svg' });
 }
 
+function fitAndDraw() {
+  if (!geoData) return;
+  var size = getSize();
+  svg.attr('viewBox', '0 0 ' + size.w + ' ' + size.h);
+  projection.fitSize([size.w - 8, size.h - 8], geoData);
+  svg.selectAll('path.country').attr('d', path);
+  positionLabels(geoData, size);
+}
+
+fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json')
+  .then(function(r){ return r.json(); })
+  .then(function(topo){
+    geoData = topojson.feature(topo, topo.objects.countries);
+    var sel = svg.selectAll('path').data(geoData.features);
+    sel.enter().append('path')
+      .attr('class', function(d){ return getInfo(d.id) ? 'country dep' : 'country'; })
+      .attr('fill', function(d){ return fillFor(getInfo(d.id)); })
+      .on('mousemove', function(event, d){
+        var info = getInfo(d.id);
+        if (!info) { tooltip.style.display = 'none'; return; }
+        tooltip.style.display = 'block';
+        tooltip.style.left = (event.offsetX + 14) + 'px';
+        tooltip.style.top = (event.offsetY + 8) + 'px';
+        tooltip.innerHTML = '<b>' + info.name + '</b> · 의존도 ' + info.dependency + '% · ' + info.minerals;
+      })
+      .on('mouseleave', function(){ tooltip.style.display = 'none'; })
+      .on('click', function(event, d){
+        var info = getInfo(d.id);
+        if (!info) return;
+        parent.postMessage({ type: 'countryClick', ...info }, '*');
+      });
+    fitAndDraw();
+    // iframe이 뒤늦게 자리잡는 경우를 대비해 한 번 더 재보정(레이아웃이 이미 안정된 뒤라면
+    // 값이 같아서 사실상 no-op).
+    setTimeout(fitAndDraw, 300);
+  });
+
+window.addEventListener('resize', fitAndDraw);
+
 window.addEventListener('message', function(e){
   if (e.data && e.data.type === 'setMode') {
     mode = e.data.mode;
     svg.selectAll('path').attr('fill', function(d){ return fillFor(getInfo(d.id)); });
-    // 위험 광물만 모드에서는 위험도 낮은 국가의 국기/이름 라벨과 지시선도 함께 숨긴다
-    Object.keys(DATA).forEach(function(id){
-      var info = DATA[id];
-      var show = !(mode === 'risk' && info.level !== 'high');
-      var disp = show ? '' : 'none';
-      var label = document.querySelector('.label[data-id="' + id + '"]');
-      if (label) label.style.display = show ? 'flex' : 'none';
-      document.querySelectorAll('[data-id="' + id + '"]').forEach(function(el){
-        if (el !== label) el.style.display = disp;
-      });
-    });
+    if (geoData) positionLabels(geoData, getSize());
   }
 });
 </script>
