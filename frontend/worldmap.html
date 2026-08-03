@@ -13,6 +13,8 @@
   .country{stroke:#FFFFFF;stroke-width:0.75px;cursor:default;}
   .country.dep{cursor:pointer;}
   .country.dep:hover{opacity:0.85;}
+  .country.kr{stroke:#1B2556;stroke-width:2.5px;}
+  .label.kr-label{background:#FFFFFF;color:#1B2556;border:2px solid #1B2556;cursor:default;}
   .label{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;gap:6px;background:#1B2556;color:#FFFFFF;font-size:12px;font-weight:700;padding:4px 12px 4px 4px;border-radius:999px;white-space:nowrap;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.15);}
   .label .dot{width:22px;height:22px;border-radius:50%;background:#FFFFFF;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;overflow:hidden;}
   .label .dot img.emoji{width:16px;height:16px;}
@@ -34,6 +36,11 @@ var DATA = {
   360: { name: '인도네시아', dependency: 35, minerals: '니켈', level: 'mid', risk: '정상', flag: '🇮🇩' }
 };
 var COLORS = { high: '#1B2556', mid: '#3B9AE1', low: '#8FC1EA', none: '#FFFFFF' };
+// 한국은 의존도 추적 대상(DATA)이 아니라 "우리나라 위치 표시"용 — 굵은 테두리 + 라벨만
+// 별도로 그린다. 클릭해도 국가 상세 패널(수입의존도용)은 띄우지 않는다.
+var KOREA_ISO = 410;
+var KOREA_LABEL = { name: '대한민국', flag: '🇰🇷' };
+var KOREA_OFFSET = [-25, -55];
 function fillFor(info) {
   if (!info) return '#FFFFFF';
   if (mode === 'risk' && info.level !== 'high') return '#FFFFFF';
@@ -107,6 +114,27 @@ function positionLabels(geo, size) {
     if (!show) { div.style.display = 'none'; leaderLayer.selectAll('[data-id="' + id + '"]').style('display', 'none'); }
   });
 
+  // 한국 라벨 — 위험도 모드와 무관하게 항상 표시 (의존도 추적 대상이 아니라 위치 표시용)
+  var krFeature = geo.features.filter(function(f){ return Number(f.id) === KOREA_ISO; })[0];
+  if (krFeature) {
+    var kc = path.centroid(krFeature);
+    if (kc && !isNaN(kc[0]) && !isNaN(kc[1])) {
+      var klx = Math.max(60, Math.min(size.w - 60, kc[0] + KOREA_OFFSET[0]));
+      var kly = Math.max(20, Math.min(size.h - 20, kc[1] + KOREA_OFFSET[1]));
+      leaderLayer.append('circle').attr('cx', kc[0]).attr('cy', kc[1]).attr('r', 3).attr('fill', '#1B2556').attr('data-id', 'kr');
+      leaderLayer.append('line')
+        .attr('x1', kc[0]).attr('y1', kc[1]).attr('x2', klx).attr('y2', kly)
+        .attr('stroke', '#1B2556').attr('stroke-width', 1).attr('stroke-dasharray', '3,3').attr('data-id', 'kr');
+      var krDiv = document.createElement('div');
+      krDiv.className = 'label kr-label';
+      krDiv.dataset.id = 'kr';
+      krDiv.style.left = klx + 'px';
+      krDiv.style.top = kly + 'px';
+      krDiv.innerHTML = '<span class="dot">' + KOREA_LABEL.flag + '</span>' + KOREA_LABEL.name;
+      labelsEl.appendChild(krDiv);
+    }
+  }
+
   if (window.twemoji) twemoji.parse(labelsEl, { folder: 'svg', ext: '.svg' });
 }
 
@@ -125,7 +153,10 @@ fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json')
     geoData = topojson.feature(topo, topo.objects.countries);
     var sel = svg.selectAll('path').data(geoData.features);
     sel.enter().append('path')
-      .attr('class', function(d){ return getInfo(d.id) ? 'country dep' : 'country'; })
+      .attr('class', function(d){
+        if (Number(d.id) === KOREA_ISO) return 'country kr';
+        return getInfo(d.id) ? 'country dep' : 'country';
+      })
       .attr('fill', function(d){ return fillFor(getInfo(d.id)); })
       .on('mousemove', function(event, d){
         var info = getInfo(d.id);
