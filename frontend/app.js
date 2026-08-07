@@ -76,7 +76,7 @@ const state = {
   // 아무것도 사전 선택돼 있지 않게 시작 — 사용자가 직접 골라야 "실행"이 된다.
   simShockType: null,
   simDuration: null,
-  simCountries: { china: false, congo: false, chile: false, australia: false, philippines: false, indonesia: false, other: false },
+  simCountries: {}, // key: ISO 3166-1 numeric(문자열, 선택된 광물의 실제 생산국 목록 기준)
   simRunning: false,
   simRanAt: null,
 
@@ -146,13 +146,11 @@ const SHOCK_TYPES = [
 ];
 const DURATIONS = ["1", "3", "6", "12", "24"];
 const DURATION_DDAY_MAP = { "1": 0, "3": 0, "6": 1, "12": 2, "24": 2 };
-const SIM_COUNTRIES = [
-  { key: "china", label: "중국" }, { key: "congo", label: "콩고" }, { key: "chile", label: "칠레" },
-  { key: "australia", label: "호주" }, { key: "philippines", label: "필리핀" },
-  { key: "indonesia", label: "인도네시아" }, { key: "other", label: "기타" },
-];
-// "⑤ 대상 국가/지역" 체크박스 key → ISO 3166-1 numeric (altsupply-map.html 지도 매칭용)
-const SIM_COUNTRY_ISO = { china: 156, congo: 180, chile: 152, australia: 36, philippines: 608, indonesia: 360 };
+// "⑤ 대상 국가/지역" 체크박스는 광물마다 다른 목록을 보여준다 — 예전에는 6개국 고정
+// 목록이라 예: 리튬을 골라도 콩고·필리핀처럼 리튬과 무관한 나라가 뜨고, 정작 실제
+// 리튬 생산국인 짐바브웨·아르헨티나는 선택할 수 없는 불일치가 있었다. 지금은
+// MINERAL_PRODUCERS[선택광물]을 그대로 체크박스 목록으로 써서 실제 생산국과 항상
+// 일치시킨다 (renderCountryChecks 참고). key는 ISO 3166-1 numeric(문자열)을 그대로 쓴다.
 
 // 광물별 세계 주요 생산국·점유율(%) — USGS Mineral Commodity Summaries 2026(2026.5 ver.1.3)
 // 원문 PDF의 "World Mine Production" 표(2025년 잠정치)를 직접 열어 확인한 실측 비중이다
@@ -943,6 +941,9 @@ function selectMineral(key) {
   // 항상 최소값(10%)에서 시작해 사용자가 직접 올려보게 한다.
   state.restrictionPct = 10;
   state.importTrillion = Math.round((m.korea_import_bn / 10000) * 100) / 100; // 억원 → 조원
+  // 대상 국가 체크박스는 광물별 실제 생산국 목록이라, 광물이 바뀌면 이전 선택은 의미가
+  // 없어져 초기화한다 (예: 리튬에서 체크한 짐바브웨는 니켈 목록엔 아예 없음).
+  state.simCountries = {};
 
   const shortName = key.replace(/\s*\(.*\)/, "");
   document.getElementById("mineral-trigger").textContent = shortName;
@@ -965,6 +966,7 @@ function selectMineral(key) {
   updatePreview();
   updateIntensityLabel();
   renderDdaySelect();
+  renderCountryChecks();
   saveParams();
 }
 
@@ -1045,7 +1047,7 @@ function setupSimulatorPanel() {
   document.getElementById("sim-reset-btn").addEventListener("click", () => {
     state.simShockType = null;
     state.simDuration = null;
-    state.simCountries = { china: false, congo: false, chile: false, australia: false, philippines: false, indonesia: false, other: false };
+    state.simCountries = {};
     state.restrictionPct = 10;
     document.getElementById("restriction-range").value = 10;
     document.getElementById("restriction-range").setAttribute("aria-valuetext", "10%");
@@ -1103,9 +1105,16 @@ function renderDurationGroup() {
 }
 
 function renderCountryChecks() {
-  document.getElementById("country-check-list").innerHTML = SIM_COUNTRIES.map((c) => {
-    const on = !!state.simCountries[c.key];
-    return `<div class="check-row" data-country="${c.key}"><span class="check-box ${on ? "active" : ""}">${on ? "✓" : ""}</span>${c.label}</div>`;
+  const producers = MINERAL_PRODUCERS[state.mineralKey] || [];
+  const listEl = document.getElementById("country-check-list");
+  if (!producers.length) {
+    listEl.innerHTML = `<div class="altmap-empty">이 광물의 생산국 데이터가 없습니다.</div>`;
+    return;
+  }
+  listEl.innerHTML = producers.map((p) => {
+    const on = !!state.simCountries[p.iso];
+    const shareLabel = p.share != null ? ` (${p.share}%)` : "";
+    return `<div class="check-row" data-country="${p.iso}"><span class="check-box ${on ? "active" : ""}">${on ? "✓" : ""}</span>${p.flag || ""} ${p.name}${shareLabel}</div>`;
   }).join("");
 }
 
@@ -1152,8 +1161,8 @@ function renderAltSupplyMap() {
   const producers = MINERAL_PRODUCERS[state.mineralKey] || [];
   const crisisIsoSet = new Set(
     Object.keys(state.simCountries)
-      .filter((k) => state.simCountries[k] && SIM_COUNTRY_ISO[k])
-      .map((k) => SIM_COUNTRY_ISO[k])
+      .filter((k) => state.simCountries[k])
+      .map((k) => Number(k))
   );
   const crisis = producers.filter((p) => crisisIsoSet.has(p.iso));
   const alt = producers.filter((p) => !crisisIsoSet.has(p.iso)).slice(0, 5);
