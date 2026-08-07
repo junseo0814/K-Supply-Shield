@@ -1111,10 +1111,13 @@ function renderCountryChecks() {
     listEl.innerHTML = `<div class="altmap-empty">이 광물의 생산국 데이터가 없습니다.</div>`;
     return;
   }
+  // 국기 이모지는 Windows(Segoe UI Emoji)에서 국가코드 텍스트(예: "ZA")로 깨져
+  // 보이는 문제가 있어(worldmap.html과 동일 이슈) 이 목록에서는 쓰지 않는다.
+  // 점유율(%)도 체크박스 목록 자체에는 굳이 안 붙인다 — 정확한 수치는
+  // "대체 공급국 제안" 카드에서 확인 가능.
   listEl.innerHTML = producers.map((p) => {
     const on = !!state.simCountries[p.iso];
-    const shareLabel = p.share != null ? ` (${p.share}%)` : "";
-    return `<div class="check-row" data-country="${p.iso}"><span class="check-box ${on ? "active" : ""}">${on ? "✓" : ""}</span>${p.flag || ""} ${p.name}${shareLabel}</div>`;
+    return `<div class="check-row" data-country="${p.iso}"><span class="check-box ${on ? "active" : ""}">${on ? "✓" : ""}</span>${p.name}</div>`;
   }).join("");
 }
 
