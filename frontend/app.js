@@ -1577,11 +1577,12 @@ function setupDashboard() {
 
 function renderCountryPanel(info) {
   const riskClass = info.risk === "위험" ? "HIGH" : info.risk === "경계" ? "MEDIUM" : "LOW";
+  const shareText = info.share != null ? `${info.share}%` : "정제·가공 대안국";
   document.getElementById("country-panel").innerHTML = `
     <div class="country-panel-flag">${info.flag || ""}</div>
     <div class="country-panel-name">${info.name}</div>
-    <div class="country-panel-row"><span>주요 수출 광물</span><b>${info.minerals}</b></div>
-    <div class="country-panel-row"><span>한국 수입 의존도</span><b>${info.dependency}%</b></div>
+    <div class="country-panel-row"><span>주요 생산 광물</span><b>${info.minerals}</b></div>
+    <div class="country-panel-row"><span>세계 생산 점유율</span><b>${shareText}</b></div>
     <div class="country-panel-row"><span>위험도</span><span class="risk-badge ${riskClass}">${info.risk}</span></div>
   `;
 }
@@ -1609,7 +1610,9 @@ function renderKotraNews() {
 }
 
 // 위험 광물 유무는 실 데이터(각 광물의 기본 시나리오 shock_example)로 판단 — mock 아님
-// EU CRMA 벤치마킹: 단일국 의존도 65% 초과 시 자동 경보 트리거 (worldmap.html DATA와 동일 소스값)
+// EU CRMA 벤치마킹: 단일국 의존도 65% 초과 시 자동 경보 트리거. 이 "의존도"는 팀이 임의로
+// 잡은 추정치(한국-국가별 실제 수입 비중 데이터는 미수집)라 worldmap.html과는 별개다 —
+// worldmap.html은 이후 USGS 실측 "세계 생산 점유율" 기준으로 바뀌었으니 혼동하지 말 것.
 const COUNTRY_DEPENDENCY = [
   { name: "중국", dependency: 62 },
   { name: "콩고민주공화국", dependency: 78 },

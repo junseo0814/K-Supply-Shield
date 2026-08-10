@@ -26,14 +26,48 @@
 <div id="labels"></div>
 <svg id="map"></svg>
 <script>
-// ISO numeric -> dependency profile (수입 의존도 데이터)
+// ISO numeric -> 세계 생산 점유율 프로필. 이전에는 "한국 수입 의존도"라는 이름으로
+// 6개국만 팀이 임의로 추정한 수치를 썼는데, 실제로 한국-국가별 수입 비중 데이터는
+// 수집하지 못했다(CLAUDE.md 미수집 목록 참고). 대신 충격 시뮬레이터(app.js의
+// MINERAL_PRODUCERS)가 이미 쓰고 있는 USGS MCS 2026 실측 "세계 생산 점유율"을
+// 그대로 지도에도 써서, 시뮬레이터에 나오는 국가를 전부 포괄하면서도 실측 데이터로
+// 통일했다. share가 null인 나라는 채굴이 아니라 정제·가공 단계의 대안(문헌상 확인)이라
+// 점유율 수치가 없다. level(high/mid/low)은 그 나라의 광물별 점유율 중 최댓값 기준
+// 임계치(50%/20%)로 자동 산출 — risk 라벨도 level에서 1:1로 파생시켜 예전처럼
+// level과 risk가 따로 노는 일이 없게 했다.
+// labeled: true인 나라만 지도 위에 이름표(라벨)를 항상 띄운다 — 26개국을 전부
+// 라벨로 띄우면 작은 지도(카드 380px)에서 서로 겹쳐 안 보이기 때문에, 점유율 상위
+// 10개국만 라벨을 달고 나머지는 색칠+클릭+호버 툴팁으로만 노출한다.
 var DATA = {
-  156: { name: '중국', dependency: 62, minerals: '희토류, 리튬', level: 'high', risk: '경계', flag: '🇨🇳' },
-  180: { name: '콩고민주공화국', dependency: 78, minerals: '코발트', level: 'high', risk: '위험', flag: '🇨🇩' },
-  152: { name: '칠레', dependency: 45, minerals: '리튬, 구리', level: 'mid', risk: '경계', flag: '🇨🇱' },
-  36:  { name: '호주', dependency: 38, minerals: '리튬, 니켈', level: 'mid', risk: '정상', flag: '🇦🇺' },
-  608: { name: '필리핀', dependency: 30, minerals: '니켈', level: 'low', risk: '정상', flag: '🇵🇭' },
-  360: { name: '인도네시아', dependency: 35, minerals: '니켈', level: 'mid', risk: '정상', flag: '🇮🇩' }
+  156: { name: '중국', share: 99, minerals: '갈륨 99%, 텅스텐 79%, 흑연 78%, 희토류 69%, 리튬 21%, 니켈 3%', level: 'high', risk: '위험', flag: '🇨🇳', labeled: true },
+  180: { name: '콩고민주공화국', share: 74, minerals: '코발트 74%', level: 'high', risk: '위험', flag: '🇨🇩', labeled: true },
+  360: { name: '인도네시아', share: 67, minerals: '니켈 67%, 코발트 14%', level: 'high', risk: '위험', flag: '🇮🇩', labeled: true },
+  710: { name: '남아공', share: 38, minerals: '망간 38%', level: 'mid', risk: '경계', flag: '🇿🇦', labeled: true },
+  36:  { name: '호주', share: 32, minerals: '리튬 32%, 망간 8%, 희토류 7%, 코발트 1%', level: 'mid', risk: '경계', flag: '🇦🇺', labeled: true },
+  266: { name: '가봉', share: 25, minerals: '망간 25%', level: 'mid', risk: '경계', flag: '🇬🇦', labeled: true },
+  152: { name: '칠레', share: 19, minerals: '리튬 19%', level: 'low', risk: '정상', flag: '🇨🇱', labeled: true },
+  840: { name: '미국', share: 13, minerals: '희토류 13%', level: 'low', risk: '정상', flag: '🇺🇸', labeled: true },
+  716: { name: '짐바브웨', share: 10, minerals: '리튬 10%', level: 'low', risk: '정상', flag: '🇿🇼', labeled: true },
+  288: { name: '가나', share: 10, minerals: '망간 10%', level: 'low', risk: '정상', flag: '🇬🇭', labeled: true },
+
+  32:  { name: '아르헨티나', share: 8, minerals: '리튬 8%', level: 'low', risk: '정상', flag: '🇦🇷' },
+  608: { name: '필리핀', share: 7, minerals: '니켈 7%, 코발트 1%', level: 'low', risk: '정상', flag: '🇵🇭' },
+  104: { name: '미얀마', share: 6, minerals: '희토류 6%', level: 'low', risk: '정상', flag: '🇲🇲' },
+  643: { name: '러시아', share: 5, minerals: '니켈 5%, 코발트 2%, 텅스텐 2%, 흑연 1%, 갈륨 1%, 게르마늄', level: 'low', risk: '정상', flag: '🇷🇺' },
+  76:  { name: '브라질', share: 4, minerals: '흑연 4%, 리튬 4%, 망간 4%', level: 'low', risk: '정상', flag: '🇧🇷' },
+  450: { name: '마다가스카르', share: 4, minerals: '흑연 4%, 코발트 1%', level: 'low', risk: '정상', flag: '🇲🇬' },
+  834: { name: '탄자니아', share: 4, minerals: '흑연 4%', level: 'low', risk: '정상', flag: '🇹🇿' },
+  356: { name: '인도', share: 4, minerals: '망간 4%', level: 'low', risk: '정상', flag: '🇮🇳' },
+  540: { name: '뉴칼레도니아', share: 4, minerals: '니켈 4%', level: 'low', risk: '정상', flag: '🇳🇨' },
+  124: { name: '캐나다', share: 4, minerals: '니켈 4%, 갈륨(정제), 게르마늄(정제)', level: 'low', risk: '정상', flag: '🇨🇦' },
+  704: { name: '베트남', share: 4, minerals: '텅스텐 4%, 희토류 1%', level: 'low', risk: '정상', flag: '🇻🇳' },
+  398: { name: '카자흐스탄', share: 3, minerals: '텅스텐 3%', level: 'low', risk: '정상', flag: '🇰🇿' },
+  508: { name: '모잠비크', share: 3, minerals: '흑연 3%', level: 'low', risk: '정상', flag: '🇲🇿' },
+  68:  { name: '볼리비아', share: 2, minerals: '텅스텐 2%', level: 'low', risk: '정상', flag: '🇧🇴' },
+  646: { name: '르완다', share: 2, minerals: '텅스텐 2%', level: 'low', risk: '정상', flag: '🇷🇼' },
+  56:  { name: '벨기에', share: null, minerals: '게르마늄(정제)', level: 'low', risk: '정상', flag: '🇧🇪' },
+  276: { name: '독일', share: null, minerals: '게르마늄(정제)', level: 'low', risk: '정상', flag: '🇩🇪' },
+  392: { name: '일본', share: null, minerals: '갈륨(정제)', level: 'low', risk: '정상', flag: '🇯🇵' }
 };
 var COLORS = { high: '#1B2556', mid: '#3B9AE1', low: '#8FC1EA', none: '#FFFFFF' };
 // 한국은 의존도 추적 대상(DATA)이 아니라 "우리나라 위치 표시"용 — 굵은 테두리 + 라벨만
@@ -69,10 +103,14 @@ function getInfo(id){ return DATA[String(Number(id))]; }
 var OFFSETS = {
   156: [110, -70],   // 중국
   180: [-110, -10],  // 콩고민주공화국
-  152: [-90, 50],    // 칠레
+  360: [40, 95],     // 인도네시아
+  710: [-30, 100],   // 남아공
   36:  [-10, 90],    // 호주
-  608: [70, 40],     // 필리핀
-  360: [40, 95]      // 인도네시아
+  266: [-190, 70],   // 가봉
+  152: [-90, 50],    // 칠레
+  840: [-60, -90],   // 미국
+  716: [70, 110],    // 짐바브웨
+  288: [-160, -20]   // 가나
 };
 
 function positionLabels(geo, size) {
@@ -85,9 +123,10 @@ function positionLabels(geo, size) {
   var leaderLayer = svg.append('g').attr('class', 'leaders');
 
   Object.keys(DATA).forEach(function(id){
+    var info = DATA[id];
+    if (!info.labeled) return; // 상위 10개국만 이름표 — 나머지는 색칠+클릭+호버로만 노출
     var feature = geo.features.filter(function(f){ return Number(f.id) === Number(id); })[0];
     if (!feature) return;
-    var info = DATA[id];
     var c = path.centroid(feature);
     if (!c || isNaN(c[0]) || isNaN(c[1])) c = path.bounds(feature).reduce(function(a,b){ return [(a[0]+b[0])/2, (a[1]+b[1])/2]; });
     if (!c || isNaN(c[0])) return;
@@ -164,7 +203,8 @@ fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json')
         tooltip.style.display = 'block';
         tooltip.style.left = (event.offsetX + 14) + 'px';
         tooltip.style.top = (event.offsetY + 8) + 'px';
-        tooltip.innerHTML = '<b>' + info.name + '</b> · 의존도 ' + info.dependency + '% · ' + info.minerals;
+        var shareText = info.share != null ? '세계 생산 점유율 ' + info.share + '%' : '정제·가공 공급망';
+        tooltip.innerHTML = '<b>' + info.name + '</b> · ' + shareText + ' · ' + info.minerals;
       })
       .on('mouseleave', function(){ tooltip.style.display = 'none'; })
       .on('click', function(event, d){
