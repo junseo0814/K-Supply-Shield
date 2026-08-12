@@ -1066,6 +1066,13 @@ function setupSimulatorPanel() {
       alert("먼저 시뮬레이션을 실행한 뒤 저장할 수 있습니다.");
       return;
     }
+    // state.simResult는 "실행" 버튼을 눌렀을 때만 갱신된다. 저장 직전에 광물/공급감소율을
+    // 슬라이더로 바꾸고 재실행을 안 하면, 라벨(pct)은 새 값인데 실제 결과(r)는 이전 실행
+    // 결과 그대로 저장되어 "90%로 저장했는데 60% 때 숫자가 그대로"인 불일치가 생긴다.
+    if (state.simResult.mineral !== state.mineralKey || state.simResult.restriction_pct !== state.restrictionPct) {
+      alert("광물 또는 공급 감소율을 바꾼 뒤 다시 실행하지 않았습니다.\n\"▶ 시뮬레이션 실행\"을 먼저 눌러 최신 결과로 갱신한 뒤 저장해주세요.");
+      return;
+    }
     const saved = state.savedScenarios || {};
     const emptySlot = SCENARIO_SLOTS.find((slot) => !saved[slot.key]);
     if (!emptySlot) {
