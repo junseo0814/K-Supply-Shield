@@ -1587,13 +1587,22 @@ function renderCountryPanel(info) {
   `;
 }
 
+// "최신 공급망 뉴스"는 두 출처를 날짜순으로 섞어서 보여준다:
+// ① KOTRA 단신속보뉴스 API(제목만, 실시간) ② 팀이 언론 기사를 직접 읽고 3줄로
+// 정리한 큐레이션 뉴스(data/media_news.csv, summary 포함). 둘 다 date 필드가
+// "YYYY-MM-DD" 문자열이라 그대로 내림차순 정렬하면 섞인다.
 async function loadKotraNews() {
   state.kotraNews = []; // 중복 호출 방지용 로딩 플래그
-  try {
-    state.kotraNews = await fetchJSON(`${API}/api/kotra-news`);
-  } catch (e) {
-    state.kotraNews = [];
-  }
+  const [kotra, media] = await Promise.all([
+    fetchJSON(`${API}/api/kotra-news`).catch(() => []),
+    fetchJSON(`${API}/api/media-news`).catch(() => []),
+  ]);
+  const tagged = [
+    ...(kotra || []).map((n) => ({ ...n, source: "kotra" })),
+    ...(media || []).map((n) => ({ ...n, source: "media" })),
+  ];
+  tagged.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  state.kotraNews = tagged;
   renderKotraNews();
 }
 
@@ -1601,12 +1610,21 @@ function renderKotraNews() {
   const el = document.getElementById("alerts-list");
   if (!state.kotraNews) { el.innerHTML = `<div class="metric-sub">뉴스를 불러오는 중...</div>`; return; }
   if (!state.kotraNews.length) { el.innerHTML = `<div class="metric-sub">표시할 뉴스가 없습니다.</div>`; return; }
-  el.innerHTML = state.kotraNews.map((n) => `
+  el.innerHTML = state.kotraNews.map((n) => {
+    const badge = n.source === "media" ? "언론 보도" : (n.country || "-");
+    const summary = n.source === "media" && n.summary
+      ? `<div class="alert-item-summary">${n.summary.replace(/\n/g, "<br>")}</div>`
+      : "";
+    return `
     <div class="alert-item">
       <span class="alert-item-time">${n.date || "-"}</span>
-      <a class="alert-item-title" href="${n.url}" target="_blank" rel="noopener noreferrer">${n.title}</a>
-      <span class="reports-cat-badge">${n.country || "-"}</span>
-    </div>`).join("");
+      <div class="alert-item-body">
+        <a class="alert-item-title" href="${n.url}" target="_blank" rel="noopener noreferrer">${n.title}</a>
+        ${summary}
+      </div>
+      <span class="reports-cat-badge">${badge}</span>
+    </div>`;
+  }).join("");
 }
 
 // 위험 광물 유무는 실 데이터(각 광물의 기본 시나리오 shock_example)로 판단 — mock 아님

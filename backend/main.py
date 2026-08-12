@@ -159,6 +159,20 @@ def get_kotra_news():
     return items
 
 
+@app.get("/api/media-news")
+def get_media_news():
+    """팀이 언론 보도를 직접 읽고 정리한 큐레이션 뉴스(data/media_news.csv).
+    KOTRA 단신속보뉴스(제목만 제공)와 달리 3줄 요약(summary)이 있어, 프런트엔드가
+    "최신 공급망 뉴스"에서 KOTRA 결과와 날짜순으로 섞어 보여준다. 정적 파일이라
+    KOTRA처럼 캐시할 필요 없이 매 요청 그대로 읽는다."""
+    path = os.path.join(DATA_DIR, 'media_news.csv')
+    if not os.path.exists(path):
+        return []
+    df = pd.read_csv(path, encoding='utf-8-sig')
+    df = df.sort_values('date', ascending=False)
+    return df.to_dict(orient='records')
+
+
 _mineral_news_alert_cache = {"data": None, "fetched_at": 0}
 
 

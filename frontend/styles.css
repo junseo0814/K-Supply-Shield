@@ -939,18 +939,20 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
 .kpi-value { font-size: 26px; font-weight: 800; margin-top: 6px; color: var(--kpi-color, var(--primary)); white-space: nowrap; }
 
 .alerts-card { background: var(--surface); border: 1px solid var(--border); padding: 16px 18px; }
-.alerts-list { display: flex; flex-direction: column; }
+.alerts-list { display: flex; flex-direction: column; max-height: 460px; overflow-y: auto; }
 .alert-item {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 12px;
   padding: 10px 2px;
   border-bottom: 1px solid var(--border);
 }
 .alert-item:last-child { border-bottom: none; }
-.alert-item-time { font-size: 11px; color: var(--text-quaternary); white-space: nowrap; }
-.alert-item-title { flex: 1; font-size: 13px; color: var(--text-secondary); text-decoration: none; }
+.alert-item-time { font-size: 11px; color: var(--text-quaternary); white-space: nowrap; padding-top: 1px; }
+.alert-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.alert-item-title { display: block; font-size: 13px; color: var(--text-secondary); text-decoration: none; }
 a.alert-item-title:hover { color: var(--primary); text-decoration: underline; }
+.alert-item-summary { font-size: 11.5px; line-height: 1.55; color: var(--text-quaternary); }
 
 .color-block-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .color-block-card {
