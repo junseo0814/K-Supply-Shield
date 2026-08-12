@@ -600,6 +600,7 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
 }
 .reports-title { flex: 1; font-size: 14px; color: var(--text-primary); min-width: 160px; }
 .reports-dl-btn {
+  display: inline-block;
   background: #fff;
   border: 1px solid var(--primary);
   color: var(--primary);
@@ -607,10 +608,13 @@ select:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1p
   font-size: 12px;
   font-weight: 700;
   font-family: var(--font);
+  text-decoration: none;
+  text-align: center;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
 }
+.reports-dl-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
 .reports-dl-btn:hover { background: var(--accent-tint); }
 
 /* ── Login screen ──────────────────────────────────────── */

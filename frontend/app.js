@@ -1870,13 +1870,16 @@ function renderReportsList() {
   document.getElementById("reports-meta").textContent = `${filtered.length}건`;
   document.getElementById("reports-list").innerHTML = filtered.map((p, idx) => {
     const open = reportsState.expanded.has(idx);
+    const link = p.url
+      ? `<a class="reports-dl-btn" href="${p.url}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">원문 보기</a>`
+      : `<button type="button" class="reports-dl-btn" disabled title="원문 링크가 등록되지 않았습니다" onclick="event.stopPropagation()">원문 보기</button>`;
     return `
     <div class="reports-list-item${open ? " open" : ""}" data-idx="${idx}">
       <span class="reports-expand-icon">${open ? "▾" : "▸"}</span>
       <span class="reports-date">${p.date}</span>
       <span class="reports-cat-badge">${p.category}</span>
       <span class="reports-title">${p.title}</span>
-      <button type="button" class="reports-dl-btn" disabled title="데모 버전에서는 다운로드가 제공되지 않습니다" onclick="event.stopPropagation()">다운로드</button>
+      ${link}
     </div>
     ${open ? `<div class="reports-detail">${p.content || "상세 내용이 아직 등록되지 않았습니다."}</div>` : ""}`;
   }).join("");
